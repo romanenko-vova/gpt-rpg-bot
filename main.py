@@ -1,2 +1,2 @@
 print("Hello World")
-# Это важно
+pass # Это важно
