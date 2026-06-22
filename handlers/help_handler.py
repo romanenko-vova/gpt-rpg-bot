@@ -4,6 +4,9 @@ from telegram.ext import ContextTypes
 from config.states import HELP
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with open(context.user_data['personage_image'], "rb") as image_file:
+        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image_file)
+    
     
     query = update.callback_query
     await query.answer()

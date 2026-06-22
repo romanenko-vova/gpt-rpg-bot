@@ -51,16 +51,19 @@ async def get_name_and_ask_class(update: Update, context: ContextTypes.DEFAULT_T
         [KeyboardButton("🗡 Вор")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard)
-    
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Выбери класс персонажа в клавиатуре справа снизу",
         reply_markup=reply_markup,
     )
-    
+
     return GET_CLASS
 
-async def get_class_and_ask_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def get_class_and_ask_description(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     user_class = update.effective_message.text
     context.user_data["class"] = user_class
     if context.user_data["class"] in ["⚔️ Воин", "🏹 Охотник", "🔮 Маг", "🗡 Вор"]:
@@ -82,4 +85,4 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         + "\nОписание персонажа: "
         + context.user_data["description"],
     )
-    return 
+    return

@@ -5,6 +5,7 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
+    PicklePersistence
 )
 
 from config.config import TOKEN
@@ -35,8 +36,9 @@ def main():
 
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
+    persistence = PicklePersistence(filepath="cache")
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    application = ApplicationBuilder().token(TOKEN).persistence(persistence).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start_handler)],
@@ -73,6 +75,8 @@ def main():
             # ],
         },
         fallbacks=[CommandHandler("start", start_handler)],
+        persistent=True,
+        name="conversation",
     )
     # кикишки кикиишки
     application.add_handler(conv_handler)
