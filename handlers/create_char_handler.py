@@ -7,7 +7,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
-from config.states import CREATECHAR, GET_CLASS, GET_DESCRIPTION, GET_NAME
+from config.states import CREATECHAR, GET_CLASS, CREATEDESC, GET_NAME, MAINMENU
 
 
 async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,12 +67,17 @@ async def get_class_and_ask_description(update: Update, context: ContextTypes.DE
         await context.bot.send_message(
             chat_id=update.effective_chat.id, text="Опиши своего персонажа!"
         )
-    return GET_DESCRIPTION
+    return CREATEDESC
 
 
 async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
     opis_user = update.effective_message.text
     context.user_data["description"] = opis_user
+    keyboard = [
+        [InlineKeyboardButton("✅ Подтвердить", callback_data="confirm_character"),
+         InlineKeyboardButton("❌ Отменить", callback_data="cancel_character")
+        ],
+    ]
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Имя персонажа: "
@@ -81,5 +86,24 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         + context.user_data["class"]
         + "\nОписание персонажа: "
         + context.user_data["description"],
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    return 
+    return CREATEDESC
+
+async def cancel_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("🔙 Назад", callback_data="back_to_mainmenu")
+        ],
+        [
+            InlineKeyboardButton(
+                "🧙 Создать персонажа заново", callback_data="create_character_fr"
+            )
+        ],
+    ]
+    query = update.callback_query
+    if query:
+        await query.answer()
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id, text="Создание персонажа отменено.", reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return CREATECHAR

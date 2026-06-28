@@ -12,18 +12,22 @@ from config.states import (
     CREATECHAR,
     GET_CLASS,
     GET_NAME,
+    CREATEDESC,
     HELP,
     MAINMENU,
+    SHOWCHAR,
 )
 from handlers.create_char_handler import (
     ask_name,
     create_char_handler_start,
     get_class_and_ask_description,
     get_name_and_ask_class,
+    create_description,
+    cancel_character,
 )
 from handlers.help_handler import help_handler
 from handlers.start_handler import start_handler
-
+from handlers.my_character_handler import show_my_character
 
 def main():
     import logging
@@ -46,6 +50,9 @@ def main():
                 CallbackQueryHandler(
                     pattern="^create_character$", callback=create_char_handler_start
                 ),
+                CallbackQueryHandler(
+                    pattern="^check_character$", callback=show_my_character
+                ),
             ],
             HELP: [
                 CallbackQueryHandler(
@@ -66,11 +73,22 @@ def main():
             GET_CLASS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_class_and_ask_description),
             ],
-            # CREATEDESC: [
-            #     MessageHandler(
-            #         filters.TEXT & ~filters.COMMAND, callback=create_description
-            #     ),
-            # ],
+            CREATEDESC: [
+                 MessageHandler(
+                     filters.TEXT & ~filters.COMMAND, callback=create_description
+                    ),
+                CallbackQueryHandler(
+                    pattern="^cancel_character$", callback=cancel_character
+                ),
+                CallbackQueryHandler(
+                    pattern="^confirm_character$", callback=start_handler
+                ),
+            ],
+            SHOWCHAR: [
+                CallbackQueryHandler(
+                    pattern="^back_to_mainmenu$", callback=start_handler
+                ),
+            ],
         },
         fallbacks=[CommandHandler("start", start_handler)],
     )
