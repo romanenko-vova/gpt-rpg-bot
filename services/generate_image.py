@@ -1,4 +1,5 @@
 import base64
+import os
 import uuid
 from io import BytesIO
 
@@ -37,6 +38,8 @@ async def generate_image(prompt: str):
         # информация о картинке в байтах
         bytes_io = BytesIO(image_data)
         image = Image.open(bytes_io)
+        if not os.path.exists("images"):
+            os.makedirs("images")
         path = f"images/{uuid.uuid4()}.png"
         image.save(path)
         return path

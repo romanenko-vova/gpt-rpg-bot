@@ -3,3 +3,4 @@ cache
 images/
 .env
 .venv
+.DS_Store

@@ -1,18 +1,20 @@
+import json
+
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
     Update,
-    
 )
-import json
 from telegram.ext import ContextTypes
+
+from handlers.build_scene_handler import build_scene_image_prompt
 from services.ask_gpt import generate_text
 from services.generate_image import generate_image
-from handlers.build_scene_handler import build_scene_image_prompt
 
-def create_system_prompt(name: str, race: str, char_class: str, backstory: str, stats: dict) -> str:
+
+def create_system_prompt(
+    name: str, race: str, char_class: str, backstory: str, stats: dict
+) -> str:
     system_prompt = f"""
     Ты — мастер текстовой RPG. Ты ведёшь игру для одного игрока.
 
@@ -21,7 +23,7 @@ def create_system_prompt(name: str, race: str, char_class: str, backstory: str, 
     - Раса: {race}
     - Класс: {char_class}
     - Предыстория: {backstory}
-    - Характеристики: STR {stats['STR']}, AGI {stats['AGI']}, INT {stats['INT']}, CON {stats['CON']}, CHA {stats['CHA']}, LUCK {stats['LUCK']}
+    - Характеристики: STR {stats["STR"]}, AGI {stats["AGI"]}, INT {stats["INT"]}, CON {stats["CON"]}, CHA {stats["CHA"]}, LUCK {stats["LUCK"]}
 
     Правила:
 
@@ -38,10 +40,13 @@ def create_system_prompt(name: str, race: str, char_class: str, backstory: str, 
     }}
     - Не заканчивай игру, сюжет бесконечный
     - Отвечай на русском языке
-    """ 
+    """
     return system_prompt
-    
-async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+
+async def handle_start_game(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
 
@@ -50,7 +55,7 @@ async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Сначала нужно создать персонажа — нажми «🧙 Создать персонажа»"
         )
         return
-    await query.message.reply_text("⚔️ Игра начинается...")
+    message = await query.message.reply_text("⚔️ Игра начинается...")
     stats = context.user_data["stats"]
 
     system_prompt = create_system_prompt(
@@ -58,34 +63,38 @@ async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         race=context.user_data["race"],
         char_class=context.user_data["class"],
         backstory=context.user_data["backstory"],
-        stats=stats
+        stats=stats,
     )
     context.user_data["history"] = [
         {"role": "assistant", "content": system_prompt}
     ]
     context.user_data["answer"] = await generate_text(system_prompt)
-    answer = json.loads(context.user_data["answer"])  
+    answer = json.loads(context.user_data["answer"])
     keyboard = [
-       InlineKeyboardButton("действие 1", callback_data='action_1'),
-       InlineKeyboardButton("действие 2", callback_data='action_2'),
-       InlineKeyboardButton("действие 3", callback_data='action_3')
+        InlineKeyboardButton("действие 1", callback_data="action_1"),
+        InlineKeyboardButton("действие 2", callback_data="action_2"),
+        InlineKeyboardButton("действие 3", callback_data="action_3"),
     ]
-    text = answer["scene"] + '\n'
-    n= 1
+    text = answer["scene"] + "\n"
+    n = 1
     for action in answer["actions"]:
-        text += "\n" + str(n) + '. ' +action
+        text += "\n" + str(n) + ". " + action
         n += 1
-    await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup([keyboard])) 
-    scene = await create_system_prompt(race=context.user_data["race"], char_class=context.user_data["class"],  backstory=context.user_data["backstory"], stats=context.user_data["stats"], name=context.user_data["name"])
-    
-    await query.message.reply_text("🖼 Рисую сцену...")
-    image_prompt = await build_scene_image_prompt(
-        scene=scene,
-        race=context.user_data["race"],
-        char_class=context.user_data["class"]
-    )
-    scene_image = await generate_image(image_prompt)
 
-    await query.message.reply_photo(photo=scene_image)
-    await query.message.reply_text(scene)
-    
+    await message.edit_text("🖼 Рисую сцену...")
+
+    # генерит английский промпт для генерации картики в шаге игры
+    image_prompt = await build_scene_image_prompt(
+        scene=answer["scene"],
+        race=context.user_data["race"],
+        char_class=context.user_data["class"],
+    )
+
+    scene_image_path = await generate_image(image_prompt)
+
+    await message.delete()
+    await query.message.reply_photo(
+        photo=scene_image_path,
+        caption=text,
+        reply_markup=InlineKeyboardMarkup([keyboard]),
+    )

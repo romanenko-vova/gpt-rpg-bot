@@ -6,9 +6,11 @@ from telegram import (
     Update,
 )
 from telegram.ext import ContextTypes
+
 from services.ask_gpt import generate_text
 
-def build_scene_image_prompt(scene: str, race: str, char_class: str) -> str:
+
+async def build_scene_image_prompt(scene: str, race: str, char_class: str) -> str:
     prompt = f"""
     Ты помогаешь генерировать изображения для RPG-игры.
 
@@ -23,4 +25,4 @@ def build_scene_image_prompt(scene: str, race: str, char_class: str) -> str:
     Верни ТОЛЬКО промпт, без пояснений.
     """
 
-    return generate_text([{"role": "user", "content": prompt}])
+    return await generate_text(prompt)

@@ -7,7 +7,14 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
-from config.states import CREATECHAR, GET_CLASS, CREATEDESC, GET_NAME, MAINMENU, GET_RASSA
+from config.states import (
+    CREATECHAR,
+    CREATEDESC,
+    GET_CLASS,
+    GET_NAME,
+    GET_RASSA,
+    MAINMENU,
+)
 
 
 async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -56,10 +63,10 @@ async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = [
         [KeyboardButton("🧑🏼 Человек")],
-        [KeyboardButton("🧝‍♂️ Эльф"),
-        KeyboardButton("🧙‍♂️ гном")],
-        [KeyboardButton("👹 орк"),
-        KeyboardButton("🧛‍♂️ вампир")],
+        [KeyboardButton("🧝‍♂️ Эльф")],
+        [KeyboardButton("🧙‍♂️ гном")],
+        [KeyboardButton("👹 орк")],
+        [KeyboardButton("🧛‍♂️ вампир")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard)
 
@@ -79,13 +86,19 @@ async def get_rassa_and_ask_class(update: Update, context: ContextTypes.DEFAULT_
         await query.answer()
 
     user_rassa = update.effective_message.text
-    context.user_data["rassa"] = user_rassa
-    if context.user_data["rassa"] in ["🧑🏼 Человек", "🧝‍♂️ Эльф", "🧙‍♂️ гном", "👹 орк", "🧛‍♂️ вампир"]:
+    context.user_data["race"] = user_rassa
+    if context.user_data["race"] in [
+        "🧑🏼 Человек",
+        "🧝‍♂️ Эльф",
+        "🧙‍♂️ гном",
+        "👹 орк",
+        "🧛‍♂️ вампир",
+    ]:
         keyboard = [
-        [KeyboardButton("⚔️ Воин")],
-        [KeyboardButton("🏹 Охотник")],
-        [KeyboardButton("🔮 Маг")],
-        [KeyboardButton("🗡 Вор")],
+            [KeyboardButton("⚔️ Воин")],
+            [KeyboardButton("🏹 Охотник")],
+            [KeyboardButton("🔮 Маг")],
+            [KeyboardButton("🗡 Вор")],
         ]
         reply_markup = ReplyKeyboardMarkup(keyboard)
 
@@ -100,7 +113,6 @@ async def get_rassa_and_ask_class(update: Update, context: ContextTypes.DEFAULT_
             text=f"в нашей игре нельзя играть за расу {update.effective_message.text}, выбери другую расу персонажа в клавиатуре снизу",
         )
         return GET_RASSA
-    
 
     return GET_CLASS
 
@@ -142,6 +154,7 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton("❌ Отменить", callback_data="cancel_character"),
         ],
     ]
+    # TODO: добавить генерацию характеристик персонажа
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Имя персонажа: "
