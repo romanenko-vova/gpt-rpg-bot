@@ -12,6 +12,7 @@ from config.states import (
     CREATECHAR,
     GET_CLASS,
     GET_NAME,
+    GET_RASSA,
     CREATEDESC,
     HELP,
     MAINMENU,
@@ -21,7 +22,8 @@ from handlers.create_char_handler import (
     ask_name,
     create_char_handler_start,
     get_class_and_ask_description,
-    get_name_and_ask_class,
+    get_name_and_ask_rassa,
+    get_rassa_and_ask_class,
     create_description,
     cancel_character,
 )
@@ -39,7 +41,7 @@ def main():
     )
 
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    logger = logging.getLogger(__name__)
+    #logger = logging.getLogger(__name__)
 
     persistence = PicklePersistence(filepath="cache")
     application = ApplicationBuilder().token(TOKEN).persistence(persistence).build()
@@ -73,7 +75,10 @@ def main():
                 ),
             ],
             GET_NAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_name_and_ask_class),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_name_and_ask_rassa),
+            ],
+            GET_RASSA: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_rassa_and_ask_class),
             ],
             GET_CLASS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_class_and_ask_description),

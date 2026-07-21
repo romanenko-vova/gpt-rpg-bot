@@ -22,6 +22,8 @@ async def show_my_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo=context.user_data["portrait"],
         caption="Имя персонажа: "
         + context.user_data["name"]
+        + "\nРаса персонажа: "
+        + context.user_data["rassa"]
         + "\nКласс персонажа: "
         + context.user_data["class"]
         + "\nОписание персонажа: "
