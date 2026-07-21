@@ -9,6 +9,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
         await query.answer()
+        await query.delete_message()
     
     keyboard = [
         [InlineKeyboardButton("🧙 Создать персонажа", callback_data='create_character')],

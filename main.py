@@ -5,8 +5,8 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
+    PicklePersistence,
 )
-
 from config.config import TOKEN
 from config.states import (
     CREATECHAR,
@@ -25,10 +25,11 @@ from handlers.create_char_handler import (
     create_description,
     cancel_character,
 )
+from handlers.create_char_image_handler import create_character_image
 from handlers.help_handler import help_handler
 from handlers.start_handler import start_handler
 from handlers.my_character_handler import show_my_character
-
+from handlers.first_play_handler import handle_start_game
 def main():
     import logging
 
@@ -40,7 +41,8 @@ def main():
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logger = logging.getLogger(__name__)
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    persistence = PicklePersistence(filepath="cache")
+    application = ApplicationBuilder().token(TOKEN).persistence(persistence).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start_handler)],
@@ -52,6 +54,9 @@ def main():
                 ),
                 CallbackQueryHandler(
                     pattern="^check_character$", callback=show_my_character
+                ),
+                CallbackQueryHandler(
+                    pattern="^start_game$", callback=handle_start_game
                 ),
             ],
             HELP: [
@@ -91,11 +96,14 @@ def main():
             ],
         },
         fallbacks=[CommandHandler("start", start_handler)],
+        persistent=True,
+        name = "conversation",
     )
     # кикишки кикиишки
     application.add_handler(conv_handler)
+    application.add_handler(CommandHandler("image",create_character_image))
     application.run_polling()
-
+    application.add_handler(CallbackQueryHandler(handle_start_game, pattern="^start_game$"))
 
 if __name__ == "__main__":
     main()
