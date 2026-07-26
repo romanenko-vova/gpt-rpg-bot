@@ -5,7 +5,7 @@ from openrouter import OpenRouter
 from config.config import OPENROUTER_API_KEY
 
 
-async def generate_text(prompt: str) -> str:
+async def generate_text(prompt: str, assistant_content: str) -> str:
     with OpenRouter(api_key=OPENROUTER_API_KEY) as openrouter:
         response = await openrouter.chat.send_async(
             model="meta-llama/llama-3.3-70b-instruct",
@@ -13,7 +13,7 @@ async def generate_text(prompt: str) -> str:
                 {"role": "system", "content": "Ты ассистент, по рпг игре"},
                 {
                     "role": "assistant",
-                    "content": " Пользователь выбрал класс вора",
+                    "content": assistant_content,
                 },
                 {"role": "user", "content": prompt},
             ],
