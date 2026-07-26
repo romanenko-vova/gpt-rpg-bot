@@ -41,16 +41,7 @@ test_stats = {
 
 
 async def create_character_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["name"] = "Эльфийский маг"
-    context.user_data["race"] = "Эльф"
-    context.user_data["class"] = "Маг"
-    context.user_data["description"] = (
-        "Могущественный маг, владеющий древними заклинаниями и магическими артефактами. Его знания в области магии позволяют ему управлять стихиями и создавать могущественные заклинания, которые поражают врагов и защищают союзников. Он носит длинные мантии, украшенные магическими символами, и всегда держит при себе посох, который усиливает его магические способности."
-    )
-    context.user_data["stats"] = test_stats
-    context.user_data["backstory"] = (
-        "Эльфийский маг родился в древнем лесу, где с детства изучал магию и природу. Он был учеником великого мага, который обучил его искусству заклинаний и магических ритуалов. После многих лет обучения он стал мастером магии и отправился в путешествие, чтобы исследовать мир и защищать его от темных сил. Его цель — найти древние артефакты, которые помогут ему стать еще могущественнее и защитить свой народ от угроз."
-    )
+
     prompt = build_image_prompt(
         race=context.user_data["race"],
         char_class=context.user_data["class"],
@@ -64,4 +55,4 @@ async def create_character_image(update: Update, context: ContextTypes.DEFAULT_T
     await update.message.reply_photo(photo=image_path)
 
     context.user_data["portrait"] = image_path
-
+    return image_path

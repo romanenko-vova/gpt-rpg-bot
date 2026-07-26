@@ -16,6 +16,8 @@ from config.states import (
     MAINMENU,
 )
 
+from handlers.generate_stats_handler import generate_stats
+from handlers.create_char_image_handler import create_character_image
 
 async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -154,17 +156,38 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton("❌ Отменить", callback_data="cancel_character"),
         ],
     ]
-    # TODO: добавить генерацию характеристик персонажа
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Имя персонажа: "
-        + context.user_data["name"]
-        + "\nРаса персонажа: "
-        + context.user_data["rassa"]
-        + "\nКласс персонажа: "
-        + context.user_data["class"]
-        + "\nОписание персонажа: "
-        + context.user_data["description"],
+        text='⚙️ Система определяет характеристики...'
+    )
+
+    stats = await generate_stats(context=context)
+    hp = stats['CON'] * 5
+    print(stats)
+
+    context.user_data["stats"] = stats
+    context.user_data["max_hp"] = hp
+    context.user_data["hp"] = hp
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"✨{context.user_data['name']}\n"
+        + f'{context.user_data["race"]} · {context.user_data["class"]}\n\n'
+
+        + f"💪Сила (STR): {stats['STR']}\n"
+        + f"🏃Ловкость (AGI): {stats['AGI']}\n"
+        + f"🧠Интеллект (INT): {stats['INT']}\n"
+        + f"❤️Телосложение (CON): {stats['CON']}\n"
+        + f"🗣Харизма (CHA): {stats['CHA']}\n"
+        + f"🍀Удача (LUCK): {stats['LUCK']}\n\n"
+
+        + f'❤️HP: {context.user_data['hp']}\n\n'
+
+        + f"📖Предыстория: {stats['backstory']}"
+    )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=await create_character_image(update, context),
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     return CREATEDESC

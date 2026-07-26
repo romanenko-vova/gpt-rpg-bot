@@ -2,7 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from config.states import MAINMENU
-
+from handlers.generate_stats_handler import generate_stats
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -10,7 +10,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query:
         await query.answer()
         await query.delete_message()
-
+    
     keyboard = [
         [
             InlineKeyboardButton(

@@ -24,7 +24,7 @@ async def show_my_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
         caption="Имя персонажа: "
         + context.user_data["name"]
         + "\nРаса персонажа: "
-        + context.user_data["rassa"]
+        + context.user_data["race"]
         + "\nКласс персонажа: "
         + context.user_data["class"]
         + "\nОписание персонажа: "

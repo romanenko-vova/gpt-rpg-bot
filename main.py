@@ -32,6 +32,8 @@ from handlers.help_handler import help_handler
 from handlers.start_handler import start_handler
 from handlers.my_character_handler import show_my_character
 from handlers.first_play_handler import handle_start_game
+
+
 def main():
     import logging
 
