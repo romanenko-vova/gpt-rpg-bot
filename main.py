@@ -17,6 +17,7 @@ from config.states import (
     HELP,
     MAINMENU,
     SHOWCHAR,
+    GAME,
 )
 from handlers.create_char_handler import (
     ask_name,
@@ -99,6 +100,9 @@ def main():
                     pattern="^back_to_mainmenu$", callback=start_handler
                 ),
             ],
+            GAME:
+            [MessageHandler(filters.TEXT & ~filters.COMMAND, callback=handle_start_game),
+             ],
         },
         fallbacks=[CommandHandler("start", start_handler)],
         persistent=True,

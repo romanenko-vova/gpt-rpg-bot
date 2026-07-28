@@ -10,7 +10,7 @@ from telegram.ext import ContextTypes
 from handlers.build_scene_handler import build_scene_image_prompt
 from services.ask_gpt import generate_text
 from services.generate_image import generate_image
-
+from config.states import GAME
 
 def create_system_prompt(
     name: str, race: str, char_class: str, backstory: str, stats: dict
@@ -89,7 +89,14 @@ async def handle_start_game(
         race=context.user_data["race"],
         char_class=context.user_data["class"],
     )
+    context.user_data["history"] = [
+    {
+        "role": "assistant",
+        "content": answer["scene"]
+    }
+    ]
 
+    
     scene_image_path = await generate_image(image_prompt)
 
     await message.delete()
@@ -98,3 +105,4 @@ async def handle_start_game(
         caption=text,
         reply_markup=InlineKeyboardMarkup([keyboard]),
     )
+    return GAME
