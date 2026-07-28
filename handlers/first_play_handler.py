@@ -80,7 +80,7 @@ async def handle_start_game(
     for action in answer["actions"]:
         text += "\n" + str(n) + ". " + action
         n += 1
-
+    
     await message.edit_text("🖼 Рисую сцену...")
 
     # генерит английский промпт для генерации картики в шаге игры
