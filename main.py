@@ -34,7 +34,7 @@ from handlers.first_play_handler import handle_start_game
 from handlers.help_handler import help_handler
 from handlers.my_character_handler import show_my_character
 from handlers.start_handler import start_handler
-
+from handlers.play_continue_handler import handle_action_game
 
 def main():
     import logging
@@ -45,7 +45,7 @@ def main():
     )
 
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    #logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
 
     persistence = PicklePersistence(filepath="cache")
     application = ApplicationBuilder().token(TOKEN).persistence(persistence).build()
@@ -79,18 +79,25 @@ def main():
                 ),
             ],
             GET_NAME: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_name_and_ask_rassa),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, callback=get_name_and_ask_rassa
+                ),
             ],
             GET_RASSA: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_rassa_and_ask_class),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, callback=get_rassa_and_ask_class
+                ),
             ],
             GET_CLASS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, callback=get_class_and_ask_description),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND,
+                    callback=get_class_and_ask_description,
+                ),
             ],
             CREATEDESC: [
-                 MessageHandler(
-                     filters.TEXT & ~filters.COMMAND, callback=create_description
-                    ),
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, callback=create_description
+                ),
                 CallbackQueryHandler(
                     pattern="^cancel_character$", callback=cancel_character
                 ),
@@ -103,19 +110,27 @@ def main():
                     pattern="^back_to_mainmenu$", callback=start_handler
                 ),
             ],
-            GAME:
-            [MessageHandler(filters.TEXT & ~filters.COMMAND, callback=handle_start_game),
-             ],
+            GAME: [
+                MessageHandler(
+                    filters.TEXT & ~filters.COMMAND, callback=handle_start_game
+                ),
+                CallbackQueryHandler(
+                    pattern="^action_[1-3]$", callback=handle_action_game
+                )
+            ],
         },
         fallbacks=[CommandHandler("start", start_handler)],
         persistent=True,
-        name = "conversation",
+        name="conversation",
     )
     # кикишки кикиишки
     application.add_handler(conv_handler)
-    application.add_handler(CommandHandler("image",create_character_image))
+    application.add_handler(CommandHandler("image", create_character_image))
     application.run_polling()
-    application.add_handler(CallbackQueryHandler(handle_start_game, pattern="^start_game$"))
+    application.add_handler(
+        CallbackQueryHandler(handle_start_game, pattern="^start_game$")
+    )
+
 
 if __name__ == "__main__":
     main()

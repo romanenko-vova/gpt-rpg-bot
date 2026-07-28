@@ -1,3 +1,5 @@
+from html import escape
+
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -169,21 +171,38 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["max_hp"] = hp
     context.user_data["hp"] = hp
 
+    # имя/раса/класс/предыстория могут содержать спецсимволы — экранируем под HTML
+    name = escape(str(context.user_data["name"]))
+    race = escape(str(context.user_data["race"]))
+    char_class = escape(str(context.user_data["class"]))
+    backstory = escape(str(stats["backstory"]))
+
+    # ширины столбцов по самым длинным словам:
+    # слева «Интеллект» = 9 (+1 запас), справа «Телосложение» = 12
+    # важно: ❤ без FE0F — иначе len=2 и «Телосложение» уезжает
+    left_w, right_w = 9, 12
+    stats_table = (
+        f"💪 {'Сила':<{left_w}} {stats['STR']:>2}  │  "
+        f"🏃 {'Ловкость':<{right_w}} {stats['AGI']:>2}\n"
+        f"🧠 {'Интеллект':<{left_w}} {stats['INT']:>2}  │  "
+        f"❤️ {'Телосложение':<{right_w}} {stats['CON']:>2}\n"
+        f"🗣 {'Харизма':<{left_w}} {stats['CHA']:>2}  │  "
+        f"🍀 {'Удача':<{right_w}} {stats['LUCK']:>2}"
+    )
+
+    text = (
+        f"<b>✨ {name}</b>\n"
+        f"<i>{race} · {char_class}</i>\n\n"
+        f"<b>Характеристики</b>\n\n"
+        f"<code>{stats_table}</code>\n\n"
+        f"❤️ <b>HP:</b> {hp}\n\n"
+        f"📖 <b>Предыстория</b>\n{backstory}"
+    )
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"✨{context.user_data['name']}\n"
-        + f'{context.user_data["race"]} · {context.user_data["class"]}\n\n'
-
-        + f"💪Сила (STR): {stats['STR']}\n"
-        + f"🏃Ловкость (AGI): {stats['AGI']}\n"
-        + f"🧠Интеллект (INT): {stats['INT']}\n"
-        + f"❤️Телосложение (CON): {stats['CON']}\n"
-        + f"🗣Харизма (CHA): {stats['CHA']}\n"
-        + f"🍀Удача (LUCK): {stats['LUCK']}\n\n"
-
-        + f'❤️HP: {context.user_data['hp']}\n\n'
-
-        + f"📖Предыстория: {stats['backstory']}"
+        text=text,
+        parse_mode="HTML",
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,

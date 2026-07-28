@@ -12,6 +12,7 @@ from services.ask_gpt import generate_text
 from services.generate_image import generate_image
 from config.states import GAME
 
+
 def create_system_prompt(
     name: str, race: str, char_class: str, backstory: str, stats: dict
 ) -> str:
@@ -31,11 +32,11 @@ def create_system_prompt(
     - Учитывай характеристики персонажа — маг замечает магические детали, воин — тактические
     - Верни ТОЛЬКО JSON без markdown, без ``` и без пояснений.Формат ответа:
     {{   
-        "scene": "[описание сцены, в которой находится персонаж]",
+        "scene": "описание сцены, в которой находится персонаж",
         "actions": [
-            "[действие 1]",
-            "[действие 2]",
-            "[действие 3]"
+            "действие 1",
+            "действие 2",
+            "действие 3"
         ]
     }}
     - Не заканчивай игру, сюжет бесконечный
@@ -44,9 +45,7 @@ def create_system_prompt(
     return system_prompt
 
 
-async def handle_start_game(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -65,38 +64,36 @@ async def handle_start_game(
         backstory=context.user_data["backstory"],
         stats=stats,
     )
-    context.user_data["history"] = [
-        {"role": "assistant", "content": system_prompt}
-    ]
-    context.user_data["answer"] = await generate_text(system_prompt)
-    answer = json.loads(context.user_data["answer"])
+    # словарь json "{'scene':'строка', 'actions':['действие 1', 'действие 2', 'действие 3']}"
+    answer_str_json = await generate_text(system_prompt)
+    answer_dic = json.loads(answer_str_json)
     keyboard = [
         InlineKeyboardButton("действие 1", callback_data="action_1"),
         InlineKeyboardButton("действие 2", callback_data="action_2"),
         InlineKeyboardButton("действие 3", callback_data="action_3"),
     ]
-    text = answer["scene"] + "\n"
+    text = answer_dic["scene"] + "\n"
     n = 1
-    for action in answer["actions"]:
+    for action in answer_dic["actions"]:
         text += "\n" + str(n) + ". " + action
         n += 1
-    
+
     await message.edit_text("🖼 Рисую сцену...")
 
     # генерит английский промпт для генерации картики в шаге игры
     image_prompt = await build_scene_image_prompt(
-        scene=answer["scene"],
+        scene=answer_dic["scene"],
         race=context.user_data["race"],
         char_class=context.user_data["class"],
     )
     context.user_data["history"] = [
-    {
-        "role": "assistant",
-        "content": answer["scene"]
-    }
+        {
+            "role": "assistant",
+            "content": answer_dic["scene"],
+        }
     ]
+    context.user_data["last_scene_dic"] = answer_dic
 
-    
     scene_image_path = await generate_image(image_prompt)
 
     await message.delete()
