@@ -4,16 +4,17 @@ from telegram.ext import (
     CommandHandler,
     ConversationHandler,
     MessageHandler,
-    filters,
     PicklePersistence,
+    filters,
 )
+
 from config.config import TOKEN
 from config.states import (
     CREATECHAR,
+    CREATEDESC,
     GET_CLASS,
     GET_NAME,
     GET_RASSA,
-    CREATEDESC,
     HELP,
     MAINMENU,
     SHOWCHAR,
@@ -21,18 +22,18 @@ from config.states import (
 )
 from handlers.create_char_handler import (
     ask_name,
+    cancel_character,
     create_char_handler_start,
+    create_description,
     get_class_and_ask_description,
     get_name_and_ask_rassa,
     get_rassa_and_ask_class,
-    create_description,
-    cancel_character,
 )
 from handlers.create_char_image_handler import create_character_image
-from handlers.help_handler import help_handler
-from handlers.start_handler import start_handler
-from handlers.my_character_handler import show_my_character
 from handlers.first_play_handler import handle_start_game
+from handlers.help_handler import help_handler
+from handlers.my_character_handler import show_my_character
+from handlers.start_handler import start_handler
 
 
 def main():
