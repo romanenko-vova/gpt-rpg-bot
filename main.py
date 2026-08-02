@@ -12,13 +12,13 @@ from config.config import TOKEN
 from config.states import (
     CREATECHAR,
     CREATEDESC,
+    GAME,
     GET_CLASS,
     GET_NAME,
     GET_RASSA,
     HELP,
     MAINMENU,
     SHOWCHAR,
-    GAME,
 )
 from handlers.create_char_handler import (
     ask_name,
@@ -33,8 +33,9 @@ from handlers.create_char_image_handler import create_character_image
 from handlers.first_play_handler import handle_start_game
 from handlers.help_handler import help_handler
 from handlers.my_character_handler import show_my_character
-from handlers.start_handler import start_handler
 from handlers.play_continue_handler import handle_action_game
+from handlers.start_handler import start_handler
+
 
 def main():
     import logging

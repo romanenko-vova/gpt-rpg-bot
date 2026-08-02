@@ -1,12 +1,10 @@
 from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
     Update,
 )
 from telegram.ext import ContextTypes
+
 from services.generate_image import generate_image
+
 
 def build_image_prompt(
     race: str, char_class: str, description: str, stats: dict
@@ -46,7 +44,7 @@ async def create_character_image(update: Update, context: ContextTypes.DEFAULT_T
         race=context.user_data["race"],
         char_class=context.user_data["class"],
         description=context.user_data["description"],
-        stats=context.user_data["stats"] if "stats" in context.user_data else test_stats,
+        stats=context.user_data["stats"]
     )
     await update.message.reply_text("🎨 Рисую портрет...")
 

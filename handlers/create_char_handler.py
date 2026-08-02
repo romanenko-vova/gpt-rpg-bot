@@ -15,11 +15,10 @@ from config.states import (
     GET_CLASS,
     GET_NAME,
     GET_RASSA,
-    MAINMENU,
 )
-
-from handlers.generate_stats_handler import generate_stats
 from handlers.create_char_image_handler import create_character_image
+from handlers.generate_stats_handler import generate_stats
+
 
 async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
