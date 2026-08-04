@@ -32,6 +32,7 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
                 "CHA": 10,
                 "LUCK": 10,
                 "backstory": "Короткая предыстория персонажа."
+                "inventory": ["предмет","предмет","предмет"]
                 }}
                 ''',
         assistant_content= None

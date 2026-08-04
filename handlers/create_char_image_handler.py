@@ -1,12 +1,10 @@
 from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
     Update,
 )
 from telegram.ext import ContextTypes
+
 from services.generate_image import generate_image
+
 
 def build_image_prompt(
     race: str, char_class: str, description: str, stats: dict
@@ -26,18 +24,10 @@ def build_image_prompt(
     return (
         f"{race} {char_class}, {style_hints[dominant]}, "
         f"{description[:80]}, "
+        f'with this equipment: {", ".join(stats["inventory"])}, '
         f"fantasy portrait, detailed digital art, dramatic lighting, dark background"
     )
 
-
-test_stats = {
-    "STR": 4,
-    "AGI": 10,
-    "INT": 10,
-    "CON": 6,
-    "CHA": 12,
-    "LUCK": 14,   
-}
 
 
 async def create_character_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -46,7 +36,7 @@ async def create_character_image(update: Update, context: ContextTypes.DEFAULT_T
         race=context.user_data["race"],
         char_class=context.user_data["class"],
         description=context.user_data["description"],
-        stats=context.user_data["stats"] if "stats" in context.user_data else test_stats,
+        stats=context.user_data["stats"]
     )
     await update.message.reply_text("🎨 Рисую портрет...")
 

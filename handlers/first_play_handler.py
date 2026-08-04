@@ -7,10 +7,10 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
+from config.states import GAME
 from handlers.build_scene_handler import build_scene_image_prompt
 from services.ask_gpt import generate_text
 from services.generate_image import generate_image
-from config.states import GAME
 
 
 def create_system_prompt(
@@ -25,7 +25,7 @@ def create_system_prompt(
     - Класс: {char_class}
     - Предыстория: {backstory}
     - Характеристики: STR {stats["STR"]}, AGI {stats["AGI"]}, INT {stats["INT"]}, CON {stats["CON"]}, CHA {stats["CHA"]}, LUCK {stats["LUCK"]}
-
+    - Инвентарь: {", ".join(stats["inventory"])}
     Правила:
 
     - Пиши атмосферно, в стиле тёмного фэнтези
@@ -61,7 +61,7 @@ async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name=context.user_data["name"],
         race=context.user_data["race"],
         char_class=context.user_data["class"],
-        backstory=context.user_data["backstory"],
+        backstory=stats["backstory"],
         stats=stats,
     )
     # словарь json "{'scene':'строка', 'actions':['действие 1', 'действие 2', 'действие 3']}"
