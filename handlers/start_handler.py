@@ -5,8 +5,6 @@ from config.states import MAINMENU
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    
-
     query = update.callback_query
     if query:
         await query.answer()
@@ -20,7 +18,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         keyboard = [
             [InlineKeyboardButton("👤 Мой персонаж", callback_data="check_character")],
-            [InlineKeyboardButton("🎲 Начать игру", callback_data="continue_game")],
+            [InlineKeyboardButton("🎲 Начать игру", callback_data="start_game")],
             [InlineKeyboardButton("❓ Помощь", callback_data="help")],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)

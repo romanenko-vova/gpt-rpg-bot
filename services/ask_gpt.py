@@ -1,5 +1,3 @@
-import asyncio
-
 from openrouter import OpenRouter
 
 from config.config import OPENROUTER_API_KEY

@@ -4,3 +4,4 @@ images/
 .env
 .venv
 .DS_Store
+Makefile 
