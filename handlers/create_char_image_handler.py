@@ -24,18 +24,10 @@ def build_image_prompt(
     return (
         f"{race} {char_class}, {style_hints[dominant]}, "
         f"{description[:80]}, "
+        f'with this equipment: {", ".join(stats["inventory"])}, '
         f"fantasy portrait, detailed digital art, dramatic lighting, dark background"
     )
 
-
-test_stats = {
-    "STR": 4,
-    "AGI": 10,
-    "INT": 10,
-    "CON": 6,
-    "CHA": 12,
-    "LUCK": 14,   
-}
 
 
 async def create_character_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
