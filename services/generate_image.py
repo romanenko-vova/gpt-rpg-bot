@@ -6,7 +6,7 @@ from io import BytesIO
 import httpx
 from PIL import Image
 
-from config.config import OPENROUTER_API_KEY, OR_BASE_URL
+from config.config import IMAGE_MODEL_NAME, OPENROUTER_API_KEY, OR_BASE_URL
 
 
 async def generate_image(prompt: str):
@@ -15,14 +15,8 @@ async def generate_image(prompt: str):
             OR_BASE_URL,
             headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
             json={
-                "model": "sourceful/riverflow-v2.5-fast",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                "modalities": ["image"],
+                "model": IMAGE_MODEL_NAME,
+                "prompt": prompt
             },
         )
 
@@ -30,11 +24,10 @@ async def generate_image(prompt: str):
         data = response.json()
         print(data)
         # достаем url изображения
-        image_url = data["choices"][0]["message"]["images"][0]["image_url"]["url"]
+        image_url = data['data'][0]["b64_json"]
         print(image_url)
         # скачиваем изображение
-        base64_str = image_url.split(",")[1]
-        image_data = base64.b64decode(base64_str)
+        image_data = base64.b64decode(image_url)
         # информация о картинке в байтах
         bytes_io = BytesIO(image_data)
         image = Image.open(bytes_io)

@@ -1,14 +1,13 @@
-import asyncio
 
 from openrouter import OpenRouter
 
-from config.config import OPENROUTER_API_KEY
+from config.config import OPENROUTER_API_KEY, TEXT_MODEL_NAME
 
 
 async def generate_text(prompt: str, assistant_content: str) -> str:
     with OpenRouter(api_key=OPENROUTER_API_KEY) as openrouter:
         response = await openrouter.chat.send_async(
-            model="meta-llama/llama-3.3-70b-instruct",
+            model=TEXT_MODEL_NAME,
             messages=[
                 {"role": "system", "content": "Ты ассистент, по рпг игре"},
                 {
