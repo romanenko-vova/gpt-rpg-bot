@@ -14,7 +14,9 @@ from services.create_system_promts import create_first_play_system_prompt
 from services.generate_image import generate_image
 
 
-async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_start_game(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
 
@@ -56,18 +58,21 @@ async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         char_class=context.user_data["class"],
     )
     context.user_data["history"] = [
-        {   
-                    "role": "system",
-                    "content": system_prompt,
+        {
+            "role": "system",
+            "content": system_prompt,
         },
-        {   
+        {
             "role": "assistant",
             "content": scene_text,
-        }
+        },
     ]
     context.user_data["last_scene_dic"] = answer_dic
 
-    scene_image_path = await generate_image(image_prompt)
+    scene_image_path = await generate_image(
+        image_prompt,
+        reference_image_path=context.user_data["portrait"],
+    )
 
     await message.delete()
     await query.message.reply_photo(

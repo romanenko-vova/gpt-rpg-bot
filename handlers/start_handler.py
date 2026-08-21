@@ -1,10 +1,18 @@
+import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from db.users_crud import create_user, get_user_by_tg_id
 from config.states import MAINMENU
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = await get_user_by_tg_id(update.effective_user.id)
+    if not user:
+        user =await create_user(update.effective_user.id)
+        
+    user_stats = json.loads(user['stats'])
+    print(user_stats)
     query = update.callback_query
     if query:
         await query.answer()

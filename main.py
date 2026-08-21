@@ -35,6 +35,7 @@ from handlers.help_handler import help_handler
 from handlers.my_character_handler import show_my_character
 from handlers.play_continue_handler import handle_action_game
 from handlers.start_handler import start_handler
+from db.database import create_database
 
 
 def main():
@@ -49,7 +50,13 @@ def main():
     # logger = logging.getLogger(__name__)
 
     persistence = PicklePersistence(filepath="cache")
-    application = ApplicationBuilder().token(TOKEN).persistence(persistence).build()
+    application = (
+        ApplicationBuilder()
+        .token(TOKEN)
+        .persistence(persistence)
+        .post_init(create_database)
+        .build()
+    )
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start_handler)],
@@ -57,7 +64,8 @@ def main():
             MAINMENU: [
                 CallbackQueryHandler(pattern="^help$", callback=help_handler),
                 CallbackQueryHandler(
-                    pattern="^create_character$", callback=create_char_handler_start
+                    pattern="^create_character$",
+                    callback=create_char_handler_start,
                 ),
                 CallbackQueryHandler(
                     pattern="^check_character$", callback=show_my_character
@@ -81,12 +89,14 @@ def main():
             ],
             GET_NAME: [
                 MessageHandler(
-                    filters.TEXT & ~filters.COMMAND, callback=get_name_and_ask_rassa
+                    filters.TEXT & ~filters.COMMAND,
+                    callback=get_name_and_ask_rassa,
                 ),
             ],
             GET_RASSA: [
                 MessageHandler(
-                    filters.TEXT & ~filters.COMMAND, callback=get_rassa_and_ask_class
+                    filters.TEXT & ~filters.COMMAND,
+                    callback=get_rassa_and_ask_class,
                 ),
             ],
             GET_CLASS: [
@@ -97,7 +107,8 @@ def main():
             ],
             CREATEDESC: [
                 MessageHandler(
-                    filters.TEXT & ~filters.COMMAND, callback=create_description
+                    filters.TEXT & ~filters.COMMAND,
+                    callback=create_description,
                 ),
                 CallbackQueryHandler(
                     pattern="^cancel_character$", callback=cancel_character
@@ -117,7 +128,7 @@ def main():
                 ),
                 CallbackQueryHandler(
                     pattern="^action_[1-3]$", callback=handle_action_game
-                )
+                ),
             ],
         },
         fallbacks=[CommandHandler("start", start_handler)],

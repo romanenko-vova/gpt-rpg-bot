@@ -9,23 +9,41 @@ from PIL import Image
 from config.config import IMAGE_MODEL_NAME, OPENROUTER_API_KEY, OR_BASE_URL
 
 
-async def generate_image(prompt: str):
+def _image_to_data_url(image_path: str) -> str:
+    # OpenRouter принимает reference только как https или data URL
+    with open(image_path, "rb") as file:
+        b64 = base64.b64encode(file.read()).decode("utf-8")
+    return f"data:image/png;base64,{b64}"
+
+
+async def generate_image(prompt: str, reference_image_path: str | None = None):
+    payload = {
+        "model": IMAGE_MODEL_NAME,
+        "prompt": prompt,
+        "aspect_ratio": "1:1",
+    }
+
+    if reference_image_path:
+        payload["input_references"] = [
+            {
+                "type": "image_url",
+                "image_url": {"url": _image_to_data_url(reference_image_path)},
+            }
+        ]
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
             OR_BASE_URL,
             headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
-            json={
-                "model": IMAGE_MODEL_NAME,
-                "prompt": prompt
-            },
+            json=payload,
         )
 
         response.raise_for_status()
         data = response.json()
-        print(data)
+        # print(data)
         # достаем url изображения
-        image_url = data['data'][0]["b64_json"]
-        print(image_url)
+        image_url = data["data"][0]["b64_json"]
+        # print(image_url)
         # скачиваем изображение
         image_data = base64.b64decode(image_url)
         # информация о картинке в байтах

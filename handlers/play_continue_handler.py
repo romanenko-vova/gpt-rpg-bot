@@ -69,7 +69,10 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     context.user_data["last_scene_dic"] = answer_dic
 
-    scene_image_path = await generate_image(image_prompt)
+    scene_image_path = await generate_image(
+        image_prompt,
+        reference_image_path=context.user_data["portrait"],
+    )
 
     await message.delete()
     await query.message.reply_photo(

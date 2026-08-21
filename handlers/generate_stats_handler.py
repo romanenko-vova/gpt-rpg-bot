@@ -1,10 +1,10 @@
-from services.generate_text import generate_text
+from services.ask_gpt import generate_text
 from telegram.ext import ContextTypes
 import json
 
 async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
     answer = await generate_text(
-        prompt=f'''Ты — система RPG. Определи начальные характеристики персонажа.
+        f'''Ты — система RPG. Определи начальные характеристики персонажа.
     
                 Персонаж:
                 - Имя: {context.user_data["name"]}
@@ -34,8 +34,7 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
                 "backstory": "Короткая предыстория персонажа.",
                 "inventory": ["предмет","предмет","предмет"]
                 }}
-                ''',
-        assistant_content= None
+                '''
     )
     stats = json.loads(answer)
 
