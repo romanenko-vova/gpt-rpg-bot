@@ -6,3 +6,4 @@ images/
 .DS_Store
 Makefile 
 *.db
+.DS_Store
