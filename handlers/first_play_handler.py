@@ -80,5 +80,10 @@ async def handle_start_game(
         caption=scene_text,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    await create_game(update.effective_user.id,history=context.user_data["history"], last_scene=context.user_data["last_scene_dic"],scene_image=scene_image_path)
+    await create_game(
+        update.effective_user.id,
+        history=context.user_data["history"],
+        last_scene=context.user_data["last_scene_dic"],
+        scene_image=scene_image_path,
+    )
     return GAME
