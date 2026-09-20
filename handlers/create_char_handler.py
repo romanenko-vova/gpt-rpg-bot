@@ -19,7 +19,6 @@ from config.states import (
 )
 from handlers.create_char_image_handler import create_character_image
 from handlers.generate_stats_handler import generate_stats
-from db.users_crud import update_user
 
 
 async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):

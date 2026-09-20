@@ -9,10 +9,8 @@ from config.states import MAINMENU
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await get_user_by_tg_id(update.effective_user.id)
     if not user:
-        user =await create_user(update.effective_user.id)
+        user = await create_user(update.effective_user.id, update.effective_user.first_name)
         
-    user_stats = json.loads(user['stats'])
-    print(user_stats)
     query = update.callback_query
     if query:
         await query.answer()
