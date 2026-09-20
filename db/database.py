@@ -22,4 +22,12 @@ async def create_database(app):
             hp INTEGER,
             max_hp INTEGER
         )""")
+
+        await db.execute("""CREATE TABLE IF NOT EXISTS games (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id BIGINT UNIQUE,
+            history TEXT,
+            last_scene TEXT,
+            scene_image TEXT)""")
+                        
         await db.commit()

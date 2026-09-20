@@ -18,6 +18,8 @@ async def get_user_by_tg_id(telegram_id: int):
         user = await cursor.fetchone()
         if user:
             user = dict(user)
+            if user['stats']:
+                user['stats'] = json.loads(user['stats'])
             return user
         return None
     

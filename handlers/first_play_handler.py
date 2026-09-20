@@ -6,7 +6,7 @@ from telegram import (
     Update,
 )
 from telegram.ext import ContextTypes
-
+from db.games_crud import create_game
 from config.states import GAME
 from handlers.build_scene_handler import build_scene_image_prompt
 from services.ask_gpt import generate_text
@@ -80,4 +80,5 @@ async def handle_start_game(
         caption=scene_text,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    await create_game(update.effective_user.id,history=context.user_data["history"], last_scene=context.user_data["last_scene_dic"],scene_image=scene_image_path)
     return GAME
