@@ -7,7 +7,7 @@ async def generate_text(prompt: str) -> str:
     with OpenRouter(api_key=OPENROUTER_API_KEY) as openrouter:
         response = await openrouter.chat.send_async(
             model=TEXT_MODEL_NAME,
-            messages=[               
+            messages=[
                 {"role": "user", "content": prompt},
             ],
         )

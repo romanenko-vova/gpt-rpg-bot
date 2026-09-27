@@ -17,9 +17,9 @@ from config.states import (
     GET_NAME,
     GET_RASSA,
 )
+#from db.users_crud import update_user
 from handlers.create_char_image_handler import create_character_image
 from handlers.generate_stats_handler import generate_stats
-from db.users_crud import update_user
 
 
 async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -65,7 +65,8 @@ async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_T
 
     user_name = update.effective_message.text
     context.user_data["name"] = user_name
-    await update_user(update.effective_user.id, name=user_name)
+    # create user in database
+    # await update_user(update.effective_user.id, name=user_name)
 
     keyboard = [
         [KeyboardButton("🧑🏼 Человек")],
@@ -170,7 +171,7 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     print(stats)
 
     context.user_data["stats"] = stats
-    await update_user(update.effective_user.id, stats=json.dumps(stats))
+    #await update_user(update.effective_user.id, stats=json.dumps(stats))
     context.user_data["max_hp"] = hp
     context.user_data["hp"] = hp
 
