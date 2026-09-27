@@ -1,5 +1,6 @@
 import aiosqlite
 
+
 async def create_database(app):
     async with aiosqlite.connect("database.db") as db:
         await db.execute("""CREATE TABLE IF NOT EXISTS users(

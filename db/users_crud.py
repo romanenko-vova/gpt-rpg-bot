@@ -1,7 +1,7 @@
-# CRUD — Create, Read, Update, Delete
+import json
 
 import aiosqlite
-import json
+
 
 async def create_user(telegram_id: int, telegram_name: str):
     async with aiosqlite.connect("database.db") as db:

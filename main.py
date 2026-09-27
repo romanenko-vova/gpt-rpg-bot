@@ -20,6 +20,7 @@ from config.states import (
     MAINMENU,
     SHOWCHAR,
 )
+from db.database import create_database
 from handlers.create_char_handler import (
     ask_name,
     cancel_character,
@@ -35,7 +36,6 @@ from handlers.help_handler import help_handler
 from handlers.my_character_handler import show_my_character
 from handlers.play_continue_handler import handle_action_game
 from handlers.start_handler import start_handler
-from db.database import create_database
 
 
 def main():

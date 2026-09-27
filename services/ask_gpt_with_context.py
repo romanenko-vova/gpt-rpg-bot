@@ -1,4 +1,3 @@
-
 from openrouter import OpenRouter
 
 from config.config import OPENROUTER_API_KEY, TEXT_MODEL_NAME

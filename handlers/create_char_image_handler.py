@@ -24,19 +24,20 @@ def build_image_prompt(
     return (
         f"{race} {char_class}, {style_hints[dominant]}, "
         f"{description[:80]}, "
-        f'with this equipment: {", ".join(stats["inventory"])}, '
+        f"with this equipment: {', '.join(stats['inventory'])}, "
         f"fantasy portrait, detailed digital art, dramatic lighting, dark background"
     )
 
 
-
-async def create_character_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def create_character_image(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
 
     prompt = build_image_prompt(
         race=context.user_data["race"],
         char_class=context.user_data["class"],
         description=context.user_data["description"],
-        stats=context.user_data["stats"]
+        stats=context.user_data["stats"],
     )
     await update.message.reply_text("🎨 Рисую портрет...")
 

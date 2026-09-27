@@ -2,9 +2,10 @@ from services.ask_gpt import generate_text
 from telegram.ext import ContextTypes
 import json
 
+
 async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
     answer = await generate_text(
-        f'''Ты — система RPG. Определи начальные характеристики персонажа.
+        f"""Ты — система RPG. Определи начальные характеристики персонажа.
     
                 Персонаж:
                 - Имя: {context.user_data["name"]}
@@ -34,7 +35,7 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
                 "backstory": "Короткая предыстория персонажа.",
                 "inventory": ["предмет","предмет","предмет"]
                 }}
-                '''
+                """
     )
     stats = json.loads(answer)
 
@@ -54,12 +55,21 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
             )
             raise ValueError(f"GPT не вернул ключ {key}")
 
-    if not type(stats['STR']) is int or not type(stats['AGI']) is int or not type(stats['INT']) is int or not type(stats['CON']) is int or not type(stats['CHA']) is int or not type(stats['LUCK']) is int:
+    if (
+        not type(stats["STR"]) is int
+        or not type(stats["AGI"]) is int
+        or not type(stats["INT"]) is int
+        or not type(stats["CON"]) is int
+        or not type(stats["CHA"]) is int
+        or not type(stats["LUCK"]) is int
+    ):
         await context.bot.send_message(
             chat_id=context.user_data["chat_id"],
             text="Ошибка",
         )
-        raise ValueError("GPT вернул некорректный тип данных для одной из характеристик")
+        raise ValueError(
+            "GPT вернул некорректный тип данных для одной из характеристик"
+        )
 
     stat_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK"]
 
@@ -70,14 +80,17 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
             chat_id=context.user_data["chat_id"],
             text="Ошибка",
         )
-        raise ValueError(f"Сумма характеристик должна быть 72, сейчас: {total}")
+        raise ValueError(
+            f"Сумма характеристик должна быть 72, сейчас: {total}"
+        )
 
-    if not type(stats['backstory']) is str:
+    if not type(stats["backstory"]) is str:
         await context.bot.send_message(
             chat_id=context.user_data["chat_id"],
             text="Ошибка",
         )
-        raise ValueError(f"backstory не является строкой, а {type(stats['backstory'])}")
+        raise ValueError(
+            f"backstory не является строкой, а {type(stats['backstory'])}"
+        )
 
-    
     return stats

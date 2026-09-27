@@ -1,4 +1,3 @@
-
 from services.ask_gpt import generate_text
 
 

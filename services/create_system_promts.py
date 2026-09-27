@@ -31,6 +31,7 @@ def create_first_play_system_prompt(
         """
     return system_prompt
 
+
 def create_system_prompt(
     name: str, race: str, char_class: str, backstory: str, stats: dict
 ) -> str:

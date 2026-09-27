@@ -1,9 +1,8 @@
-import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from db.users_crud import create_user, get_user_by_tg_id
 from config.states import MAINMENU
+from db.users_crud import create_user, get_user_by_tg_id
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):

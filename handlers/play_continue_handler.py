@@ -9,14 +9,16 @@ from services.create_system_promts import create_system_prompt
 from services.generate_image import generate_image
 
 
-async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_action_game(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
 
     stats = context.user_data["stats"]
-    #обновляем системный промпт в истории, чтобы он соответствовал текущему персонажу
-    
-    context.user_data['history'][0]['content'] = create_system_prompt(
+    # обновляем системный промпт в истории, чтобы он соответствовал текущему персонажу
+
+    context.user_data["history"][0]["content"] = create_system_prompt(
         name=context.user_data["name"],
         race=context.user_data["race"],
         char_class=context.user_data["class"],
@@ -29,11 +31,15 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     last_scene_dic = context.user_data["last_scene_dic"]
     action_text = last_scene_dic["actions"][action_number - 1]
 
-    context.user_data['history'].append({"role": "user", "content": action_text})
+    context.user_data["history"].append(
+        {"role": "user", "content": action_text}
+    )
 
     message = await query.message.reply_text("⚔️ Сцена развивается...")
 
-    answer_str_json = await generate_text_with_context(context.user_data['history'])
+    answer_str_json = await generate_text_with_context(
+        context.user_data["history"]
+    )
 
     print(answer_str_json)
 
@@ -65,7 +71,9 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         char_class=context.user_data["class"],
     )
 
-    context.user_data["history"].append({"role": "assistant", "content": scene_text})
+    context.user_data["history"].append(
+        {"role": "assistant", "content": scene_text}
+    )
 
     context.user_data["last_scene_dic"] = answer_dic
 

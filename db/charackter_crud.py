@@ -1,5 +1,7 @@
-import aiosqlite
 import json
+
+import aiosqlite
+
 
 async def create_character(telegram_id: int):
     async with aiosqlite.connect("database.db") as db:

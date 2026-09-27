@@ -1,5 +1,8 @@
-import aiosqlite
 import json
+
+import aiosqlite
+
+
 async def create_game(telegram_id: int, history: list[dict], last_scene: dict, scene_image: str):
     async with aiosqlite.connect("database.db") as db:
         await db.execute(
