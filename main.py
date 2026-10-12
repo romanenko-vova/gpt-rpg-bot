@@ -126,9 +126,6 @@ def main():
                 ),
             ],
             GAME: [
-                MessageHandler(
-                    filters.TEXT & ~filters.COMMAND, callback=handle_start_game
-                ),
                 CallbackQueryHandler(
                     pattern="^action_[1-3]$", callback=handle_action_game
                 ),
@@ -142,12 +139,7 @@ def main():
     application.add_handler(conv_handler)
     application.add_handler(CommandHandler("image", create_character_image))
     application.run_polling()
-    application.add_handler(
-        CallbackQueryHandler(handle_start_game, pattern="^start_game$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(handle_continue_game, pattern="^continue_game$")
-    )
+    
 
 
 if __name__ == "__main__":

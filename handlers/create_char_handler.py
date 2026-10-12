@@ -1,12 +1,12 @@
 import json
 from html import escape
-from turtle import update
 
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
     Update,
 )
 from telegram.ext import ContextTypes
@@ -18,12 +18,18 @@ from config.states import (
     GET_NAME,
     GET_RASSA,
 )
-from db.charackter_crud import create_character, update_character, get_character_by_tg_id
+from db.charackter_crud import (
+    create_character,
+    update_character,
+    get_character_by_tg_id,
+)
 from handlers.create_char_image_handler import create_character_image
 from handlers.generate_stats_handler import generate_stats
 
 
-async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def create_char_handler_start(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
 
     query = update.callback_query
     if query:
@@ -60,7 +66,9 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return GET_NAME
 
 
-async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_name_and_ask_rassa(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
     print(1)
     query = update.callback_query
     if query:
@@ -69,7 +77,7 @@ async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_T
     user_name = update.effective_message.text
     context.user_data["name"] = user_name
     # create user in database
-    
+
     await update_character(update.effective_user.id, name=user_name)
 
     keyboard = [
@@ -90,7 +98,9 @@ async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_T
     return GET_RASSA
 
 
-async def get_rassa_and_ask_class(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_rassa_and_ask_class(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
 
     query = update.callback_query
     if query:
@@ -143,7 +153,9 @@ async def get_class_and_ask_description(
     await update_character(update.effective_user.id, class_name=user_class)
     if user_class in ["⚔️ Воин", "🏹 Охотник", "🔮 Маг", "🗡 Вор"]:
         await context.bot.send_message(
-            chat_id=update.effective_chat.id, text="Опиши своего персонажа!"
+            chat_id=update.effective_chat.id,
+            text="Опиши своего персонажа!",
+            reply_markup=ReplyKeyboardRemove(),
         )
     else:
         await context.bot.send_message(
@@ -154,7 +166,9 @@ async def get_class_and_ask_description(
     return CREATEDESC
 
 
-async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def create_description(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
 
     query = update.callback_query
     if query:
@@ -165,17 +179,21 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update_character(update.effective_user.id, description=opis_user)
     keyboard = [
         [
-            InlineKeyboardButton("✅ Подтвердить", callback_data="confirm_character"),
-            InlineKeyboardButton("❌ Отменить", callback_data="cancel_character"),
+            InlineKeyboardButton(
+                "✅ Подтвердить", callback_data="confirm_character"
+            ),
+            InlineKeyboardButton(
+                "❌ Отменить", callback_data="cancel_character"
+            ),
         ],
     ]
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text='⚙️ Система определяет характеристики...'
+        text="⚙️ Система определяет характеристики...",
     )
 
     stats = await generate_stats(context=context)
-    hp = stats['CON'] * 5
+    hp = stats["CON"] * 5
     print(stats)
 
     context.user_data["stats"] = stats
@@ -191,7 +209,7 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     race = escape(str(context.user_data["race"]))
     char_class = escape(str(context.user_data["class"]))
     backstory = escape(str(stats["backstory"]))
-    
+
     left_w, right_w = 9, 12
     stats_table = (
         f"💪 {'Сила':<{left_w}} {stats['STR']:>2}  │  "
@@ -211,14 +229,19 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"📖 <b>Предыстория</b>\n{backstory}"
     )
 
-    await context.bot.send_message(
+    message1 = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=text,
         parse_mode="HTML",
     )
-    await context.bot.send_message(
+    message2 = await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=await create_character_image(update, context),
+        text="🎨 Рисую портрет...",
+    )
+    await create_character_image(update, context)
+    await message2.delete()
+    await message1.reply_photo(
+        photo=context.user_data["portrait"],
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     return CREATEDESC
@@ -234,13 +257,12 @@ async def cancel_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔙 Назад", callback_data="back_to_mainmenu")],
         [
             InlineKeyboardButton(
-                "🧙 Создать персонажа заново", callback_data="create_character_fr"
+                "🧙 Создать персонажа заново",
+                callback_data="create_character_fr",
             )
         ],
     ]
-    query = update.callback_query
-    if query:
-        await query.answer()
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Создание персонажа отменено.",

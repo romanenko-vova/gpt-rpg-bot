@@ -40,11 +40,8 @@ async def create_character_image(
         description=context.user_data["description"],
         stats=context.user_data["stats"],
     )
-    await update.message.reply_text("🎨 Рисую портрет...")
 
     image_path = await generate_image(prompt)
-
-    await update.message.reply_photo(photo=image_path)
 
     context.user_data["portrait"] = image_path
     await update_character(update.effective_user.id, portrait=image_path)
