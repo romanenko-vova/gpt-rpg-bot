@@ -2,6 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from config.states import MAINMENU
+from db.charackter_crud import get_character_by_tg_id
 from db.games_crud import get_game_by_tg_id
 from db.users_crud import create_user, get_user_by_tg_id
 
@@ -17,8 +18,22 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
 
     saved_game = await get_game_by_tg_id(update.effective_user.id)
+
+    # после перезапуска бота user_data пустой, персонажа поднимаем из базы
+    if not context.user_data.get("portrait"):
+        character = await get_character_by_tg_id(update.effective_user.id)
+        if character and character.get("portrait"):
+            context.user_data["name"] = character.get("name")
+            context.user_data["race"] = character.get("race")
+            context.user_data["class"] = character.get("class_name")
+            context.user_data["description"] = character.get("description")
+            context.user_data["stats"] = character.get("stats")
+            context.user_data["portrait"] = character.get("portrait")
+            context.user_data["hp"] = character.get("hp")
+            context.user_data["max_hp"] = character.get("max_hp")
+
     keyboard = []
-    if "stats" not in context.user_data:
+    if not context.user_data.get("portrait"):
         keyboard += [
             [InlineKeyboardButton("🧙 Создать персонажа", callback_data="create_character")],
         ]

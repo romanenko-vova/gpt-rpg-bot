@@ -21,14 +21,10 @@ async def show_my_character(
     await context.bot.send_photo(
         chat_id=update.effective_chat.id,
         photo=context.user_data["portrait"],
-        caption="Имя персонажа: "
-        + context.user_data["name"]
-        + "\nРаса персонажа: "
-        + context.user_data["race"]
-        + "\nКласс персонажа: "
-        + context.user_data["class"]
-        + "\nОписание персонажа: "
-        + context.user_data["description"],
+        caption=f"Имя: {context.user_data['name']}\n"
+        + f"Раса: {context.user_data['race']}\n"
+        + f"Класс: {context.user_data['class']}\n"
+        + f"Описание: {context.user_data['description']}",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     return SHOWCHAR

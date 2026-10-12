@@ -15,11 +15,12 @@ async def get_character_by_tg_id(telegram_id: int):
     async with aiosqlite.connect("database.db") as db:
             db.row_factory = aiosqlite.Row # для возврата данных в виде словаря
             cursor =await db.execute("SELECT * FROM characters WHERE telegram_id = ?", (telegram_id,))
-            user = await cursor.fetchone()
-            if user:
-                user = dict(user)
-                user['stats'] = json.loads(user['stats'])
-                return user
+            character = await cursor.fetchone()
+            if character:
+                character = dict(character)
+                if character["stats"]:
+                    character['stats'] = json.loads(character['stats'])
+                return character
             return None
 
 async def update_character(telegram_id: int, **kwargs):
