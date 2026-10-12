@@ -3,6 +3,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
+from db.charackter_crud import update_character
 from services.generate_image import generate_image
 
 
@@ -46,4 +47,5 @@ async def create_character_image(
     await update.message.reply_photo(photo=image_path)
 
     context.user_data["portrait"] = image_path
+    await update_character(update.effective_user.id, portrait=image_path)
     return image_path

@@ -1,5 +1,6 @@
 import json
 from html import escape
+from turtle import update
 
 from telegram import (
     InlineKeyboardButton,
@@ -17,7 +18,7 @@ from config.states import (
     GET_NAME,
     GET_RASSA,
 )
-#from db.users_crud import update_user
+from db.charackter_crud import create_character, update_character, get_character_by_tg_id
 from handlers.create_char_image_handler import create_character_image
 from handlers.generate_stats_handler import generate_stats
 
@@ -54,11 +55,13 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id, text="Дай имя своему персонажу"
     )
+    if not await get_character_by_tg_id(update.effective_user.id):
+        await create_character(update.effective_user.id)
     return GET_NAME
 
 
 async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    print(1)
     query = update.callback_query
     if query:
         await query.answer()
@@ -66,7 +69,8 @@ async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_T
     user_name = update.effective_message.text
     context.user_data["name"] = user_name
     # create user in database
-    # await update_user(update.effective_user.id, name=user_name)
+    
+    await update_character(update.effective_user.id, name=user_name)
 
     keyboard = [
         [KeyboardButton("🧑🏼 Человек")],
@@ -94,7 +98,8 @@ async def get_rassa_and_ask_class(update: Update, context: ContextTypes.DEFAULT_
 
     user_rassa = update.effective_message.text
     context.user_data["race"] = user_rassa
-    if context.user_data["race"] in [
+    await update_character(update.effective_user.id, race=user_rassa)
+    if user_rassa in [
         "🧑🏼 Человек",
         "🧝‍♂️ Эльф",
         "🧙‍♂️ гном",
@@ -133,8 +138,10 @@ async def get_class_and_ask_description(
         await query.answer()
 
     user_class = update.effective_message.text
+
     context.user_data["class"] = user_class
-    if context.user_data["class"] in ["⚔️ Воин", "🏹 Охотник", "🔮 Маг", "🗡 Вор"]:
+    await update_character(update.effective_user.id, class_name=user_class)
+    if user_class in ["⚔️ Воин", "🏹 Охотник", "🔮 Маг", "🗡 Вор"]:
         await context.bot.send_message(
             chat_id=update.effective_chat.id, text="Опиши своего персонажа!"
         )
@@ -155,6 +162,7 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     opis_user = update.effective_message.text
     context.user_data["description"] = opis_user
+    await update_character(update.effective_user.id, description=opis_user)
     keyboard = [
         [
             InlineKeyboardButton("✅ Подтвердить", callback_data="confirm_character"),
@@ -171,9 +179,12 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     print(stats)
 
     context.user_data["stats"] = stats
-    #await update_user(update.effective_user.id, stats=json.dumps(stats))
-    context.user_data["max_hp"] = hp
     context.user_data["hp"] = hp
+    context.user_data["max_hp"] = hp
+
+    await update_character(update.effective_user.id, stats=json.dumps(stats))
+    await update_character(update.effective_user.id, hp=hp)
+    await update_character(update.effective_user.id, max_hp=hp)
 
     # имя/раса/класс/предыстория могут содержать спецсимволы — экранируем под HTML
     name = escape(str(context.user_data["name"]))

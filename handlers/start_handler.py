@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 
 from config.states import MAINMENU
 from db.users_crud import create_user, get_user_by_tg_id
-
+from db.charackter_crud import get_character_by_tg_id, create_character
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await get_user_by_tg_id(update.effective_user.id)
@@ -15,7 +15,14 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await query.delete_message()
     keyboard = []
-    if "stats" not in context.user_data :
+    if not (context.user_data.get('name') and context.user_data.get('race') and context.user_data.get('class') and context.user_data.get('description') and context.user_data.get('stats') and context.user_data.get('portrait')):
+        context.user_data["name"] = get_character_by_tg_id(update.effective_user.id).name if get_character_by_tg_id(update.effective_user.id) else None
+        context.user_data["race"] = get_character_by_tg_id(update.effective_user.id).race if get_character_by_tg_id(update.effective_user.id) else None
+        context.user_data["class"] = get_character_by_tg_id(update.effective_user.id).class_name if get_character_by_tg_id(update.effective_user.id) else None
+        context.user_data["description"] = get_character_by_tg_id(update.effective_user.id).description if get_character_by_tg_id(update.effective_user.id) else None
+        context.user_data["stats"] = get_character_by_tg_id(update.effective_user.id).stats if get_character_by_tg_id(update.effective_user.id) else None
+        context.user_data["portrait"] = get_character_by_tg_id(update.effective_user.id).portrait if get_character_by_tg_id(update.effective_user.id) else None
+    if "portrait" not in context.user_data :
         keyboard += [
             [InlineKeyboardButton("🧙 Создать персонажа", callback_data="create_character")],
         ]

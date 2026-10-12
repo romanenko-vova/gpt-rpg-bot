@@ -16,10 +16,8 @@ async def create_database(app):
             race TEXT,
             class_name TEXT,
             description TEXT,
-            backstory TEXT,
             portrait TEXT,
             stats TEXT,
-            inventory TEXT,
             hp INTEGER,
             max_hp INTEGER
         )""")
