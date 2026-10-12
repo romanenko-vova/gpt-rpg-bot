@@ -8,7 +8,7 @@ from services.ask_gpt_with_context import generate_text_with_context
 from services.create_system_promts import create_system_prompt
 from services.dice_mechanics import resolve_action_roll
 from services.generate_image import generate_image
-
+from db.games_crud import update_game
 
 async def handle_action_game(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -72,10 +72,8 @@ async def handle_action_game(
         [InlineKeyboardButton("действие 3", callback_data="action_3")],
     ]
     scene_text = answer_dic["scene"] + "\n"
-    n = 1
-    for action in answer_dic["actions"]:
+    for n, action in enumerate(answer_dic["actions"], start=1):
         scene_text += "\n" + str(n) + ". " + action
-        n += 1
     context.user_data["stats"]["STR"] += answer_dic["str"]
     context.user_data["stats"]["AGI"] += answer_dic["agi"]
     context.user_data["stats"]["INT"] += answer_dic["int"]
@@ -102,10 +100,16 @@ async def handle_action_game(
         image_prompt,
         reference_image_path=context.user_data["portrait"],
     )
-
+    await update_game(
+        telegram_id=update.effective_user.id,
+        last_scene=answer_dic,
+        scene_image=scene_image_path,
+        history=context.user_data["history"],
+    )
     await message.delete()
     await query.message.reply_photo(
         photo=scene_image_path,
         caption=f"{scene_text}\n\n{dice_text}",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    

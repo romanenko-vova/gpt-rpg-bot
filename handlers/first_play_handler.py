@@ -6,12 +6,58 @@ from telegram import (
     Update,
 )
 from telegram.ext import ContextTypes
-from db.games_crud import create_game
+from db.games_crud import create_game, get_game_by_tg_id
 from config.states import GAME
 from handlers.build_scene_handler import build_scene_image_prompt
 from services.ask_gpt import generate_text
 from services.create_system_promts import create_first_play_system_prompt
 from services.generate_image import generate_image
+
+
+def _build_scene_text(scene_dic: dict) -> str:
+    scene_text = scene_dic["scene"] + "\n"
+    for n, action in enumerate(scene_dic["actions"], start=1):
+        scene_text += f"\n{n}. {action}"
+    return scene_text
+
+
+async def handle_continue_game(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    if query:
+        await query.answer()
+
+    game = await get_game_by_tg_id(update.effective_user.id)
+    if not game:
+        if query:
+            await query.message.reply_text("Сохранённой игры не найдено. Начинаем заново.")
+        return await handle_start_game(update, context)
+
+    context.user_data["history"] = game["history"]
+    context.user_data["last_scene_dic"] = game["last_scene"]
+
+    keyboard = [
+        [InlineKeyboardButton("действие 1", callback_data="action_1")],
+        [InlineKeyboardButton("действие 2", callback_data="action_2")],
+        [InlineKeyboardButton("действие 3", callback_data="action_3")],
+    ]
+    scene_text = _build_scene_text(game["last_scene"])
+
+    if query:
+        await query.message.reply_photo(
+            photo=game["scene_image"],
+            caption=scene_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    else:
+        await update.effective_message.reply_photo(
+            photo=game["scene_image"],
+            caption=scene_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+    return GAME
 
 
 async def handle_start_game(
@@ -43,11 +89,7 @@ async def handle_start_game(
         [InlineKeyboardButton("действие 2", callback_data="action_2")],
         [InlineKeyboardButton("действие 3", callback_data="action_3")],
     ]
-    scene_text = answer_dic["scene"] + "\n"
-    n = 1
-    for action in answer_dic["actions"]:
-        scene_text += "\n" + str(n) + ". " + action
-        n += 1
+    scene_text = _build_scene_text(answer_dic)
 
     await message.edit_text("🖼 Рисую сцену...")
 

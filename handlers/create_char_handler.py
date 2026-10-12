@@ -180,10 +180,7 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     race = escape(str(context.user_data["race"]))
     char_class = escape(str(context.user_data["class"]))
     backstory = escape(str(stats["backstory"]))
-
-    # ширины столбцов по самым длинным словам:
-    # слева «Интеллект» = 9 (+1 запас), справа «Телосложение» = 12
-    # важно: ❤ без FE0F — иначе len=2 и «Телосложение» уезжает
+    
     left_w, right_w = 9, 12
     stats_table = (
         f"💪 {'Сила':<{left_w}} {stats['STR']:>2}  │  "

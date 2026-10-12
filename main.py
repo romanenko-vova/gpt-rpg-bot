@@ -31,7 +31,7 @@ from handlers.create_char_handler import (
     get_rassa_and_ask_class,
 )
 from handlers.create_char_image_handler import create_character_image
-from handlers.first_play_handler import handle_start_game
+from handlers.first_play_handler import handle_continue_game, handle_start_game
 from handlers.help_handler import help_handler
 from handlers.my_character_handler import show_my_character
 from handlers.play_continue_handler import handle_action_game
@@ -72,6 +72,9 @@ def main():
                 ),
                 CallbackQueryHandler(
                     pattern="^start_game$", callback=handle_start_game
+                ),
+                CallbackQueryHandler(
+                    pattern="^continue_game$", callback=handle_continue_game
                 ),
             ],
             HELP: [
@@ -141,6 +144,9 @@ def main():
     application.run_polling()
     application.add_handler(
         CallbackQueryHandler(handle_start_game, pattern="^start_game$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_continue_game, pattern="^continue_game$")
     )
 
 
