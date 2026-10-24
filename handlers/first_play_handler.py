@@ -1,5 +1,3 @@
-import json
-
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -7,11 +5,13 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 from db.games_crud import create_game, get_game_by_tg_id
-from config.states import GAME
+from config.states import GAME, MAINMENU
 from handlers.build_scene_handler import build_scene_image_prompt
+from handlers.start_handler import remember_character
 from services.ask_gpt import generate_text
 from services.create_system_promts import create_first_play_system_prompt
 from services.generate_image import generate_image
+from services.read_model_json import read_model_json, scene_is_ok
 
 
 def _build_scene_text(scene_dic: dict) -> str:
@@ -25,14 +25,19 @@ async def handle_continue_game(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
-    if query:
-        await query.answer()
+
+    # продолжение само по себе статы не хранит, поднимаем персонажа
+    if not context.user_data.get("stats"):
+        await remember_character(update.effective_user.id, context)
 
     game = await get_game_by_tg_id(update.effective_user.id)
     if not game:
         if query:
             await query.message.reply_text("Сохранённой игры не найдено. Начинаем заново.")
         return await handle_start_game(update, context)
+
+    if query:
+        await query.answer()
 
     context.user_data["history"] = game["history"]
     context.user_data["last_scene_dic"] = game["last_scene"]
@@ -64,13 +69,18 @@ async def handle_start_game(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
-    await query.answer()
+    if query:
+        await query.answer()
 
-    if "stats" not in context.user_data:
-        await query.message.reply_text(
-            "Сначала нужно создать персонажа — нажми «🧙 Создать персонажа»"
-        )
-        return
+    if not context.user_data.get("stats"):
+        await remember_character(update.effective_user.id, context)
+
+    if not context.user_data.get("stats"):
+        if query:
+            await query.message.reply_text(
+                "Сначала нужно создать персонажа — нажми «🧙 Создать персонажа»"
+            )
+        return MAINMENU
     message = await query.message.reply_text("⚔️ Игра начинается...")
     stats = context.user_data["stats"]
 
@@ -83,7 +93,10 @@ async def handle_start_game(
     )
     # словарь json "{'scene':'строка', 'actions':['действие 1', 'действие 2', 'действие 3']}"
     answer_str_json = await generate_text(system_prompt)
-    answer_dic = json.loads(answer_str_json)
+    answer_dic = read_model_json(answer_str_json)
+    if not scene_is_ok(answer_dic):
+        await message.edit_text("Не получилось разобрать ответ. Нажми «Начать игру» ещё раз.")
+        return MAINMENU
     keyboard = [
         [InlineKeyboardButton("действие 1", callback_data="action_1")],
         [InlineKeyboardButton("действие 2", callback_data="action_2")],

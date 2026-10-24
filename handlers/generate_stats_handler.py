@@ -1,9 +1,13 @@
 from services.ask_gpt import generate_text
+from services.read_model_json import read_model_json
 from telegram.ext import ContextTypes
-import json
 
 
-async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
+async def send_stats_error(context, chat_id):
+    await context.bot.send_message(chat_id=chat_id, text="Ошибка")
+
+
+async def generate_stats(context: ContextTypes.DEFAULT_TYPE, chat_id):
     answer = await generate_text(
         f"""Ты — система RPG. Определи начальные характеристики персонажа.
     
@@ -37,23 +41,16 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
                 }}
                 """
     )
-    stats = json.loads(answer)
-
-    if type(stats) is not dict:
-        await context.bot.send_message(
-            chat_id=context.user_data["chat_id"],
-            text="Ошибка",
-        )
-        raise ValueError(f"GPT вернул не словарь, а {type(stats)}")
+    stats = read_model_json(answer)
+    if not stats:
+        await send_stats_error(context, chat_id)
+        return None
 
     required_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK", "backstory"]
     for key in required_keys:
         if key not in stats:
-            await context.bot.send_message(
-                chat_id=context.user_data["chat_id"],
-                text="Ошибка",
-            )
-            raise ValueError(f"GPT не вернул ключ {key}")
+            await send_stats_error(context, chat_id)
+            return None
 
     if (
         not type(stats["STR"]) is int
@@ -63,34 +60,23 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE) -> dict:
         or not type(stats["CHA"]) is int
         or not type(stats["LUCK"]) is int
     ):
-        await context.bot.send_message(
-            chat_id=context.user_data["chat_id"],
-            text="Ошибка",
-        )
-        raise ValueError(
-            "GPT вернул некорректный тип данных для одной из характеристик"
-        )
+        await send_stats_error(context, chat_id)
+        return None
 
     stat_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK"]
 
     total = sum(stats[key] for key in stat_keys)
 
     if total != 72:
-        await context.bot.send_message(
-            chat_id=context.user_data["chat_id"],
-            text="Ошибка",
-        )
-        raise ValueError(
-            f"Сумма характеристик должна быть 72, сейчас: {total}"
-        )
+        await send_stats_error(context, chat_id)
+        return None
 
     if not type(stats["backstory"]) is str:
-        await context.bot.send_message(
-            chat_id=context.user_data["chat_id"],
-            text="Ошибка",
-        )
-        raise ValueError(
-            f"backstory не является строкой, а {type(stats['backstory'])}"
-        )
+        await send_stats_error(context, chat_id)
+        return None
+
+    # без инвентаря портрет падает, пустой список тоже нормально
+    if type(stats.get("inventory")) is not list:
+        stats["inventory"] = []
 
     return stats

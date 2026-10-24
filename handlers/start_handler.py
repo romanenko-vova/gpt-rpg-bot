@@ -7,7 +7,27 @@ from db.games_crud import get_game_by_tg_id
 from db.users_crud import create_user, get_user_by_tg_id
 
 
+async def remember_character(telegram_id, context):
+    # после перезапуска память пустая, персонажа берём из базы
+    character = await get_character_by_tg_id(telegram_id)
+    if not character or not character.get("stats"):
+        return False
+
+    context.user_data["name"] = character.get("name")
+    context.user_data["race"] = character.get("race")
+    context.user_data["class"] = character.get("class_name")
+    context.user_data["description"] = character.get("description")
+    context.user_data["stats"] = character.get("stats")
+    context.user_data["portrait"] = character.get("portrait")
+    context.user_data["hp"] = character.get("hp")
+    context.user_data["max_hp"] = character.get("max_hp")
+    return True
+
+
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # подтверждение персонажа тоже попадает сюда, флаг ожидания кнопки сбрасываем
+    context.user_data["waiting_confirm"] = False
+
     user = await get_user_by_tg_id(update.effective_user.id)
     if not user:
         user = await create_user(update.effective_user.id, update.effective_user.first_name)
@@ -19,18 +39,8 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     saved_game = await get_game_by_tg_id(update.effective_user.id)
 
-    # после перезапуска бота user_data пустой, персонажа поднимаем из базы
-    if not context.user_data.get("portrait"):
-        character = await get_character_by_tg_id(update.effective_user.id)
-        if character and character.get("portrait"):
-            context.user_data["name"] = character.get("name")
-            context.user_data["race"] = character.get("race")
-            context.user_data["class"] = character.get("class_name")
-            context.user_data["description"] = character.get("description")
-            context.user_data["stats"] = character.get("stats")
-            context.user_data["portrait"] = character.get("portrait")
-            context.user_data["hp"] = character.get("hp")
-            context.user_data["max_hp"] = character.get("max_hp")
+    if not context.user_data.get("stats"):
+        await remember_character(update.effective_user.id, context)
 
     keyboard = []
     if not context.user_data.get("portrait"):

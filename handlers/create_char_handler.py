@@ -30,6 +30,7 @@ from handlers.generate_stats_handler import generate_stats
 async def create_char_handler_start(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
+    context.user_data["waiting_confirm"] = False
 
     query = update.callback_query
     if query:
@@ -53,6 +54,8 @@ async def create_char_handler_start(
 
 
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    context.user_data["waiting_confirm"] = False
 
     query = update.callback_query
     if query:
@@ -174,6 +177,14 @@ async def create_description(
     if query:
         await query.answer()
 
+    # карточка уже готова, ждём кнопку, а не новый текст
+    if context.user_data.get("waiting_confirm"):
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Нажми «Подтвердить» или «Отменить».",
+        )
+        return CREATEDESC
+
     opis_user = update.effective_message.text
     context.user_data["description"] = opis_user
     await update_character(update.effective_user.id, description=opis_user)
@@ -192,7 +203,10 @@ async def create_description(
         text="⚙️ Система определяет характеристики...",
     )
 
-    stats = await generate_stats(context=context)
+    stats = await generate_stats(context, update.effective_chat.id)
+    if not stats:
+        return CREATEDESC
+
     hp = stats["CON"] * 5
     print(stats)
 
@@ -244,10 +258,12 @@ async def create_description(
         photo=context.user_data["portrait"],
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    context.user_data["waiting_confirm"] = True
     return CREATEDESC
 
 
 async def cancel_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["waiting_confirm"] = False
 
     query = update.callback_query
     if query:

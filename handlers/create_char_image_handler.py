@@ -21,11 +21,12 @@ def build_image_prompt(
 
     stat_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK"]
     dominant = max(stat_keys, key=lambda s: stats[s])
+    inventory = stats.get("inventory") or []
 
     return (
         f"{race} {char_class}, {style_hints[dominant]}, "
         f"{description[:80]}, "
-        f"with this equipment: {', '.join(stats['inventory'])}, "
+        f"with this equipment: {', '.join(inventory)}, "
         f"fantasy portrait, detailed digital art, dramatic lighting, dark background"
     )
 
