@@ -3,7 +3,9 @@ import json
 import aiosqlite
 
 
-async def create_game(telegram_id: int, history: list[dict], last_scene: dict, scene_image: str):
+async def create_game(
+    telegram_id: int, history: list[dict], last_scene: dict, scene_image: str
+):
     async with aiosqlite.connect("database.db") as db:
         await db.execute(
             """
@@ -23,12 +25,16 @@ async def create_game(telegram_id: int, history: list[dict], last_scene: dict, s
 async def get_game_by_tg_id(telegram_id: int):
     async with aiosqlite.connect("database.db") as db:
         db.row_factory = aiosqlite.Row
-        cursor = await db.execute("SELECT * FROM games WHERE telegram_id = ?", (telegram_id,))
+        cursor = await db.execute(
+            "SELECT * FROM games WHERE telegram_id = ?", (telegram_id,)
+        )
         game = await cursor.fetchone()
         if game:
             game = dict(game)
             game["history"] = json.loads(game["history"]) if game.get("history") else []
-            game["last_scene"] = json.loads(game["last_scene"]) if game.get("last_scene") else {}
+            game["last_scene"] = (
+                json.loads(game["last_scene"]) if game.get("last_scene") else {}
+            )
             return game
         return None
 

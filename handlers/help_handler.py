@@ -9,9 +9,7 @@ async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    keyboard = [
-        [InlineKeyboardButton("🔙 Назад", callback_data="back_to_mainmenu")]
-    ]
+    keyboard = [[InlineKeyboardButton("🔙 Назад", callback_data="back_to_mainmenu")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await context.bot.send_message(

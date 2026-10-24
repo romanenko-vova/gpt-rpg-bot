@@ -28,5 +28,5 @@ async def create_database(app):
             history TEXT,
             last_scene TEXT,
             scene_image TEXT)""")
-                        
+
         await db.commit()

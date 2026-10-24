@@ -1,6 +1,7 @@
+from telegram.ext import ContextTypes
+
 from services.ask_gpt import generate_text
 from services.read_model_json import read_model_json
-from telegram.ext import ContextTypes
 
 
 async def send_stats_error(context, chat_id):
@@ -53,12 +54,12 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE, chat_id):
             return None
 
     if (
-        not type(stats["STR"]) is int
-        or not type(stats["AGI"]) is int
-        or not type(stats["INT"]) is int
-        or not type(stats["CON"]) is int
-        or not type(stats["CHA"]) is int
-        or not type(stats["LUCK"]) is int
+        type(stats["STR"]) is not int
+        or type(stats["AGI"]) is not int
+        or type(stats["INT"]) is not int
+        or type(stats["CON"]) is not int
+        or type(stats["CHA"]) is not int
+        or type(stats["LUCK"]) is not int
     ):
         await send_stats_error(context, chat_id)
         return None
@@ -71,7 +72,7 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE, chat_id):
         await send_stats_error(context, chat_id)
         return None
 
-    if not type(stats["backstory"]) is str:
+    if type(stats["backstory"]) is not str:
         await send_stats_error(context, chat_id)
         return None
 

@@ -31,9 +31,7 @@ def build_image_prompt(
     )
 
 
-async def create_character_image(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def create_character_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     prompt = build_image_prompt(
         race=context.user_data["race"],

@@ -30,7 +30,9 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = await get_user_by_tg_id(update.effective_user.id)
     if not user:
-        user = await create_user(update.effective_user.id, update.effective_user.first_name)
+        user = await create_user(
+            update.effective_user.id, update.effective_user.first_name
+        )
 
     query = update.callback_query
     if query:
@@ -45,7 +47,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     if not context.user_data.get("portrait"):
         keyboard += [
-            [InlineKeyboardButton("🧙 Создать персонажа", callback_data="create_character")],
+            [
+                InlineKeyboardButton(
+                    "🧙 Создать персонажа", callback_data="create_character"
+                )
+            ],
         ]
     else:
         keyboard += [

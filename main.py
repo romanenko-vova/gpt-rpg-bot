@@ -139,7 +139,6 @@ def main():
     application.add_handler(conv_handler)
     application.add_handler(CommandHandler("image", create_character_image))
     application.run_polling()
-    
 
 
 if __name__ == "__main__":

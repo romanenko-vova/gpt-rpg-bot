@@ -46,9 +46,7 @@ async def save_fight_progress(telegram_id, context):
     )
 
 
-async def handle_action_game(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -56,9 +54,7 @@ async def handle_action_game(
         await remember_character(update.effective_user.id, context)
 
     if not context.user_data.get("stats") or not context.user_data.get("history"):
-        await query.message.reply_text(
-            "Сначала создай персонажа и начни игру из меню."
-        )
+        await query.message.reply_text("Сначала создай персонажа и начни игру из меню.")
         return MAINMENU
 
     stats = context.user_data["stats"]
@@ -83,9 +79,7 @@ async def handle_action_game(
         char_class=context.user_data["class"],
     )
 
-    context.user_data["history"].append(
-        {"role": "user", "content": action_text}
-    )
+    context.user_data["history"].append({"role": "user", "content": action_text})
 
     if dice_result["success"]:
         outcome_text = "✅ Успех"
@@ -104,20 +98,18 @@ async def handle_action_game(
         f"+ {dice_result['modifier']} = {dice_result['total']} против DC {dice_result['dc']} — {outcome_text}"
     )
 
-    message = await query.message.reply_text(
-        f"{dice_text}\n\n⚔️ Сцена развивается..."
-    )
+    message = await query.message.reply_text(f"{dice_text}\n\n⚔️ Сцена развивается...")
 
-    answer_str_json = await generate_text_with_context(
-        context.user_data["history"]
-    )
+    answer_str_json = await generate_text_with_context(context.user_data["history"])
 
     print(answer_str_json)
 
     answer_dic = read_model_json(answer_str_json)
     if not scene_is_ok(answer_dic):
         context.user_data["history"].pop()
-        await message.edit_text("Не получилось разобрать ответ. Нажми действие ещё раз.")
+        await message.edit_text(
+            "Не получилось разобрать ответ. Нажми действие ещё раз."
+        )
         return GAME
 
     keyboard = [
@@ -147,9 +139,7 @@ async def handle_action_game(
         char_class=context.user_data["class"],
     )
 
-    context.user_data["history"].append(
-        {"role": "assistant", "content": scene_text}
-    )
+    context.user_data["history"].append({"role": "assistant", "content": scene_text})
 
     context.user_data["last_scene_dic"] = answer_dic
 

@@ -1,6 +1,5 @@
 import random
 
-
 ABILITY_KEYWORDS = {
     "STR": [
         "удар",
@@ -98,7 +97,10 @@ def _best_ability_for_action(action_text: str, char_class: str) -> str:
         return "STR"
     if any(word in char_class_lower for word in ["вор", "rogue", "thief", "ninja"]):
         return "AGI"
-    if any(word in char_class_lower for word in ["маг", "wizard", "mage", "sorcerer", "cleric"]):
+    if any(
+        word in char_class_lower
+        for word in ["маг", "wizard", "mage", "sorcerer", "cleric"]
+    ):
         return "INT"
     if any(word in char_class_lower for word in ["паладин", "бард", "ranger", "bard"]):
         return "CHA"
@@ -113,7 +115,10 @@ def resolve_action_roll(action_text: str, stats: dict, char_class: str) -> dict:
     roll = random.randint(1, 20)
     total = roll + modifier
     dc = 12
-    if any(word in action_text.lower() for word in ["опас", "труд", "схват", "сраж", "маг", "тайн", "слишком", "больш"]):
+    if any(
+        word in action_text.lower()
+        for word in ["опас", "труд", "схват", "сраж", "маг", "тайн", "слишком", "больш"]
+    ):
         dc = 14
     success = total >= dc
 

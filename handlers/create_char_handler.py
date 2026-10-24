@@ -20,16 +20,14 @@ from config.states import (
 )
 from db.charackter_crud import (
     create_character,
-    update_character,
     get_character_by_tg_id,
+    update_character,
 )
 from handlers.create_char_image_handler import create_character_image
 from handlers.generate_stats_handler import generate_stats
 
 
-async def create_char_handler_start(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["waiting_confirm"] = False
 
     query = update.callback_query
@@ -69,9 +67,7 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return GET_NAME
 
 
-async def get_name_and_ask_rassa(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(1)
     query = update.callback_query
     if query:
@@ -101,9 +97,7 @@ async def get_name_and_ask_rassa(
     return GET_RASSA
 
 
-async def get_rassa_and_ask_class(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def get_rassa_and_ask_class(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     if query:
@@ -169,9 +163,7 @@ async def get_class_and_ask_description(
     return CREATEDESC
 
 
-async def create_description(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     if query:
@@ -190,12 +182,8 @@ async def create_description(
     await update_character(update.effective_user.id, description=opis_user)
     keyboard = [
         [
-            InlineKeyboardButton(
-                "✅ Подтвердить", callback_data="confirm_character"
-            ),
-            InlineKeyboardButton(
-                "❌ Отменить", callback_data="cancel_character"
-            ),
+            InlineKeyboardButton("✅ Подтвердить", callback_data="confirm_character"),
+            InlineKeyboardButton("❌ Отменить", callback_data="cancel_character"),
         ],
     ]
     await context.bot.send_message(

@@ -4,8 +4,9 @@ from telegram import (
     Update,
 )
 from telegram.ext import ContextTypes
-from db.games_crud import create_game, get_game_by_tg_id
+
 from config.states import GAME, MAINMENU
+from db.games_crud import create_game, get_game_by_tg_id
 from handlers.build_scene_handler import build_scene_image_prompt
 from handlers.start_handler import remember_character
 from services.ask_gpt import generate_text
@@ -21,9 +22,7 @@ def _build_scene_text(scene_dic: dict) -> str:
     return scene_text
 
 
-async def handle_continue_game(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def handle_continue_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
     # продолжение само по себе статы не хранит, поднимаем персонажа
@@ -33,7 +32,9 @@ async def handle_continue_game(
     game = await get_game_by_tg_id(update.effective_user.id)
     if not game:
         if query:
-            await query.message.reply_text("Сохранённой игры не найдено. Начинаем заново.")
+            await query.message.reply_text(
+                "Сохранённой игры не найдено. Начинаем заново."
+            )
         return await handle_start_game(update, context)
 
     if query:
@@ -65,9 +66,7 @@ async def handle_continue_game(
     return GAME
 
 
-async def handle_start_game(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
+async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
         await query.answer()
@@ -95,7 +94,9 @@ async def handle_start_game(
     answer_str_json = await generate_text(system_prompt)
     answer_dic = read_model_json(answer_str_json)
     if not scene_is_ok(answer_dic):
-        await message.edit_text("Не получилось разобрать ответ. Нажми «Начать игру» ещё раз.")
+        await message.edit_text(
+            "Не получилось разобрать ответ. Нажми «Начать игру» ещё раз."
+        )
         return MAINMENU
     keyboard = [
         [InlineKeyboardButton("действие 1", callback_data="action_1")],
