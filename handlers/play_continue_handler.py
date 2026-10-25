@@ -10,7 +10,7 @@ from handlers.build_scene_handler import build_scene_image_prompt
 from handlers.start_handler import remember_character
 from services.ask_gpt_with_context import generate_text_with_context
 from services.create_system_promts import create_system_prompt
-from services.dice_mechanics import resolve_action_roll
+from services.dice_mechanics import decide_if_roll_needed, resolve_action_roll
 from services.generate_image import generate_image
 from services.read_model_json import read_model_json, scene_is_ok
 
@@ -73,30 +73,48 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     last_scene_dic = context.user_data["last_scene_dic"]
     action_text = last_scene_dic["actions"][action_number - 1]
 
-    dice_result = resolve_action_roll(
+    roll_decision = await decide_if_roll_needed(
         action_text=action_text,
-        stats=context.user_data["stats"],
-        char_class=context.user_data["class"],
+        history=context.user_data.get("history", []),
     )
 
-    context.user_data["history"].append({"role": "user", "content": action_text})
+    if roll_decision.get("needs_roll"):
+        dice_result = resolve_action_roll(
+            action_text=action_text,
+            stats=context.user_data["stats"],
+            char_class=context.user_data["class"],
+            ability=roll_decision.get("ability"),
+            dc=int(roll_decision.get("dc", 12)),
+        )
+        if dice_result["success"]:
+            outcome_text = "✅ Успех"
+        else:
+            outcome_text = "❌ Провал"
+            current_hp = context.user_data.get("hp")
+            if type(current_hp) is not int:
+                current_hp = 0
+            damage = max(1, 5 - dice_result["modifier"])
+            context.user_data["hp"] = max(0, current_hp - damage)
+            outcome_text += f" (-{damage} HP)"
+            await save_fight_progress(update.effective_user.id, context)
 
-    if dice_result["success"]:
-        outcome_text = "✅ Успех"
+        dice_text = (
+            f"🎲 Проверка {dice_result['ability']}: d20({dice_result['roll']}) "
+            f"+ {dice_result['modifier']} = {dice_result['total']} против DC {dice_result['dc']} — {outcome_text}"
+        )
+        story_input = (
+            f"Игрок выбрал действие: {action_text}. "
+            f"Решение ведущего: {roll_decision.get('reason', 'Нужна проверка навыка.')}. "
+            f"Результат броска: {dice_text}."
+        )
     else:
-        outcome_text = "❌ Провал"
-        current_hp = context.user_data.get("hp")
-        if type(current_hp) is not int:
-            current_hp = 0
-        damage = max(1, 5 - dice_result["modifier"])
-        context.user_data["hp"] = max(0, current_hp - damage)
-        outcome_text += f" (-{damage} HP)"
-        await save_fight_progress(update.effective_user.id, context)
+        dice_text = "🎲 Проверка не нужна: действие проходит без риска и без броска."
+        story_input = (
+            f"Игрок выбрал действие: {action_text}. "
+            f"Решение ведущего: {roll_decision.get('reason', 'Действие обычное.')}"
+        )
 
-    dice_text = (
-        f"🎲 Проверка {dice_result['ability']}: d20({dice_result['roll']}) "
-        f"+ {dice_result['modifier']} = {dice_result['total']} против DC {dice_result['dc']} — {outcome_text}"
-    )
+    context.user_data["history"].append({"role": "user", "content": story_input})
 
     message = await query.message.reply_text(f"{dice_text}\n\n⚔️ Сцена развивается...")
 
