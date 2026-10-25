@@ -1,3 +1,5 @@
+import json
+
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -120,7 +122,8 @@ async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         },
         {
             "role": "assistant",
-            "content": scene_text,
+            # именно JSON, чтобы модель и дальше отвечала в этом формате
+            "content": json.dumps(answer_dic, ensure_ascii=False),
         },
     ]
     context.user_data["last_scene_dic"] = answer_dic

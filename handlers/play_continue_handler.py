@@ -5,12 +5,12 @@ from telegram.ext import ContextTypes
 
 from config.states import GAME, MAINMENU
 from db.charackter_crud import update_character
-from db.games_crud import update_game
+from db.games_crud import get_game_by_tg_id, update_game
 from handlers.build_scene_handler import build_scene_image_prompt
 from handlers.start_handler import remember_character
 from services.ask_gpt_with_context import generate_text_with_context
 from services.create_system_promts import create_system_prompt
-from services.dice_mechanics import decide_if_roll_needed, resolve_action_roll
+from services.dice_mechanics import resolve_action_roll
 from services.generate_image import generate_image
 from services.read_model_json import read_model_json, scene_is_ok
 
@@ -73,7 +73,13 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     last_scene_dic = context.user_data["last_scene_dic"]
     action_text = last_scene_dic["actions"][action_number - 1]
 
-    roll_decision = {"needs_roll": False, "ability": "LUCK", "dc": 12, "reason": "Действие обычное, без проверки."}
+    # TODO: кубики временно выключены, потом вернуть вызов decide_if_roll_needed
+    roll_decision = {
+        "needs_roll": False,
+        "ability": "LUCK",
+        "dc": 12,
+        "reason": "Действие обычное, без проверки.",
+    }
 
     if roll_decision.get("needs_roll"):
         dice_result = resolve_action_roll(
@@ -146,7 +152,21 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["hp"] = 0
     context.user_data["hp"] += take_number(answer_dic, "hp")
     await save_fight_progress(update.effective_user.id, context)
-    if answer_dic['paint'] == True:
+
+    # в историю кладём JSON, иначе модель начинает отвечать текстом и склеивать сцену с действиями
+    context.user_data["history"].append(
+        {"role": "assistant", "content": json.dumps(answer_dic, ensure_ascii=False)}
+    )
+    context.user_data["last_scene_dic"] = answer_dic
+
+    # если модель не просит рисовать, показываем прошлую картинку из сохранения
+    scene_image_path = None
+    if answer_dic.get("paint") is not True:
+        saved_game = await get_game_by_tg_id(update.effective_user.id)
+        if saved_game:
+            scene_image_path = saved_game["scene_image"]
+
+    if not scene_image_path:
         await message.edit_text("🖼 Рисую сцену...")
 
         # генерит английский промпт для генерации картики в шаге игры
@@ -155,16 +175,11 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
             race=context.user_data["race"],
             char_class=context.user_data["class"],
         )
-
-    context.user_data["history"].append({"role": "assistant", "content": scene_text})
-
-    context.user_data["last_scene_dic"] = answer_dic
-
-    if answer_dic['paint'] == True:
         scene_image_path = await generate_image(
             image_prompt,
             reference_image_path=context.user_data["portrait"],
         )
+
     await update_game(
         telegram_id=update.effective_user.id,
         last_scene=answer_dic,
