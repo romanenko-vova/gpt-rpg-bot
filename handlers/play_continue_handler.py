@@ -73,10 +73,7 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     last_scene_dic = context.user_data["last_scene_dic"]
     action_text = last_scene_dic["actions"][action_number - 1]
 
-    roll_decision = await decide_if_roll_needed(
-        action_text=action_text,
-        history=context.user_data.get("history", []),
-    )
+    roll_decision = {"needs_roll": False, "ability": "LUCK", "dc": 12, "reason": "Действие обычное, без проверки."}
 
     if roll_decision.get("needs_roll"):
         dice_result = resolve_action_roll(
@@ -123,6 +120,7 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     print(answer_str_json)
 
     answer_dic = read_model_json(answer_str_json)
+    print(answer_dic)
     if not scene_is_ok(answer_dic):
         context.user_data["history"].pop()
         await message.edit_text(
@@ -148,23 +146,25 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["hp"] = 0
     context.user_data["hp"] += take_number(answer_dic, "hp")
     await save_fight_progress(update.effective_user.id, context)
-    await message.edit_text("🖼 Рисую сцену...")
+    if answer_dic['paint'] == True:
+        await message.edit_text("🖼 Рисую сцену...")
 
-    # генерит английский промпт для генерации картики в шаге игры
-    image_prompt = await build_scene_image_prompt(
-        scene=answer_dic["scene"],
-        race=context.user_data["race"],
-        char_class=context.user_data["class"],
-    )
+        # генерит английский промпт для генерации картики в шаге игры
+        image_prompt = await build_scene_image_prompt(
+            scene=answer_dic["scene"],
+            race=context.user_data["race"],
+            char_class=context.user_data["class"],
+        )
 
     context.user_data["history"].append({"role": "assistant", "content": scene_text})
 
     context.user_data["last_scene_dic"] = answer_dic
 
-    scene_image_path = await generate_image(
-        image_prompt,
-        reference_image_path=context.user_data["portrait"],
-    )
+    if answer_dic['paint'] == True:
+        scene_image_path = await generate_image(
+            image_prompt,
+            reference_image_path=context.user_data["portrait"],
+        )
     await update_game(
         telegram_id=update.effective_user.id,
         last_scene=answer_dic,
