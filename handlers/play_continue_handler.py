@@ -5,12 +5,12 @@ from telegram.ext import ContextTypes
 
 from config.states import GAME, MAINMENU
 from db.charackter_crud import update_character
-from db.games_crud import update_game
+from db.games_crud import save_game_snapshot, update_game
 from handlers.build_scene_handler import build_scene_image_prompt
 from handlers.start_handler import remember_character
 from services.ask_gpt_with_context import generate_text_with_context
 from services.create_system_promts import create_system_prompt
-from services.dice_mechanics import decide_if_roll_needed, resolve_action_roll
+from services.dice_mechanics import resolve_action_roll
 from services.generate_image import generate_image
 from services.read_model_json import read_model_json, scene_is_ok
 
@@ -73,30 +73,21 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     last_scene_dic = context.user_data["last_scene_dic"]
     action_text = last_scene_dic["actions"][action_number - 1]
 
-    roll_decision = await decide_if_roll_needed(
-        action_text=action_text,
-        history=context.user_data.get("history", []),
-    )
-
-    if roll_decision.get("needs_roll"):
+    needs_roll = last_scene_dic.get("needs_roll")
+    if needs_roll:
+        # вызов функции из dice mechanic
         dice_result = resolve_action_roll(
             action_text=action_text,
             stats=context.user_data["stats"],
             char_class=context.user_data["class"],
-            ability=roll_decision.get("ability"),
-            dc=int(roll_decision.get("dc", 12)),
+            ability=last_scene_dic.get("ability"),
+            dc=int(last_scene_dic.get("dc", 12)),
         )
+
         if dice_result["success"]:
             outcome_text = "✅ Успех"
         else:
             outcome_text = "❌ Провал"
-            current_hp = context.user_data.get("hp")
-            if type(current_hp) is not int:
-                current_hp = 0
-            damage = max(1, 5 - dice_result["modifier"])
-            context.user_data["hp"] = max(0, current_hp - damage)
-            outcome_text += f" (-{damage} HP)"
-            await save_fight_progress(update.effective_user.id, context)
 
         dice_text = (
             f"🎲 Проверка {dice_result['ability']}: d20({dice_result['roll']}) "
@@ -104,14 +95,14 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         story_input = (
             f"Игрок выбрал действие: {action_text}. "
-            f"Решение ведущего: {roll_decision.get('reason', 'Нужна проверка навыка.')}. "
+            f"Решение ведущего: {last_scene_dic.get('reason', 'Нужна проверка навыка.')}. "
             f"Результат броска: {dice_text}."
         )
     else:
         dice_text = "🎲 Проверка не нужна: действие проходит без риска и без броска."
         story_input = (
             f"Игрок выбрал действие: {action_text}. "
-            f"Решение ведущего: {roll_decision.get('reason', 'Действие обычное.')}"
+            f"Решение ведущего: {last_scene_dic.get('reason', 'Действие обычное.')}"
         )
 
     context.user_data["history"].append({"role": "user", "content": story_input})
@@ -129,6 +120,7 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Не получилось разобрать ответ. Нажми действие ещё раз."
         )
         return GAME
+
 
     keyboard = [
         [InlineKeyboardButton("действие 1", callback_data="action_1")],
@@ -160,6 +152,7 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["history"].append({"role": "assistant", "content": scene_text})
 
     context.user_data["last_scene_dic"] = answer_dic
+    context.user_data["scene_count"] = context.user_data.get("scene_count", 0) + 1
 
     scene_image_path = await generate_image(
         image_prompt,
@@ -171,6 +164,14 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         scene_image=scene_image_path,
         history=context.user_data["history"],
     )
+    if context.user_data["scene_count"] % 10 == 0:
+        await save_game_snapshot(
+            telegram_id=update.effective_user.id,
+            history=context.user_data["history"],
+            last_scene=answer_dic,
+            scene_image=scene_image_path,
+            scene_count=context.user_data["scene_count"],
+        )
     await message.delete()
     await query.message.reply_photo(
         photo=scene_image_path,

@@ -31,7 +31,11 @@ from handlers.create_char_handler import (
     get_rassa_and_ask_class,
 )
 from handlers.create_char_image_handler import create_character_image
-from handlers.first_play_handler import handle_continue_game, handle_start_game
+from handlers.first_play_handler import (
+    handle_continue_game,
+    handle_start_game,
+    load_game_save,
+)
 from handlers.help_handler import help_handler
 from handlers.my_character_handler import show_my_character
 from handlers.play_continue_handler import handle_action_game
@@ -75,6 +79,9 @@ def main():
                 ),
                 CallbackQueryHandler(
                     pattern="^continue_game$", callback=handle_continue_game
+                ),
+                CallbackQueryHandler(
+                    pattern=r"^load_save_\d+$", callback=load_game_save
                 ),
             ],
             HELP: [

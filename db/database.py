@@ -29,4 +29,16 @@ async def create_database(app):
             last_scene TEXT,
             scene_image TEXT)""")
 
+        await db.execute("""CREATE TABLE IF NOT EXISTS save_slots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id BIGINT,
+            save_slot TEXT,
+            scene_count INTEGER,
+            history TEXT,
+            last_scene TEXT,
+            scene_image TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(telegram_id, save_slot)
+        )""")
+
         await db.commit()

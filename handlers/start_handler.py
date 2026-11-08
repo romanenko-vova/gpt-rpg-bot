@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 
 from config.states import MAINMENU
 from db.charackter_crud import get_character_by_tg_id
-from db.games_crud import get_game_by_tg_id
+from db.games_crud import get_game_by_tg_id, list_saves_for_user
 from db.users_crud import create_user, get_user_by_tg_id
 
 
@@ -39,7 +39,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await query.delete_message()
 
-    saved_game = await get_game_by_tg_id(update.effective_user.id)
+    saved_game = await list_saves_for_user(update.effective_user.id)
 
     if not context.user_data.get("stats"):
         await remember_character(update.effective_user.id, context)
