@@ -77,7 +77,6 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if needs_roll:
         # вызов функции из dice mechanic
         dice_result = resolve_action_roll(
-            action_text=action_text,
             ability=last_scene_dic.get("ability"),
             dc=int(last_scene_dic.get("dc", 12)),
         )
