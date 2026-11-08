@@ -5,10 +5,10 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
-from config.states import SHOWCHAR
+from config.states import SHOW_CHARACTER
 
 
-async def show_my_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query:
         await query.answer()
@@ -25,4 +25,4 @@ async def show_my_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
         + f"Описание: {context.user_data['description']}",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    return SHOWCHAR
+    return SHOW_CHARACTER

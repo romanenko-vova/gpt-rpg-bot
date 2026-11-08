@@ -4,8 +4,7 @@ from telegram.ext import ContextTypes
 from config.states import HELP
 
 
-async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+async def show_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 

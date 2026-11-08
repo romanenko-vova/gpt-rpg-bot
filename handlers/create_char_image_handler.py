@@ -3,11 +3,12 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
-from db.charackter_crud import update_character
+from config.stats import STAT_NAMES
+from db.character_crud import update_character
 from services.generate_image import generate_image
 
 
-def build_image_prompt(
+def build_portrait_prompt(
     race: str, char_class: str, description: str, stats: dict
 ) -> str:
     style_hints = {
@@ -19,21 +20,23 @@ def build_image_prompt(
         "LUCK": "mysterious smile, unusual trinkets, lucky charms",
     }
 
-    stat_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK"]
-    dominant = max(stat_keys, key=lambda s: stats[s])
+    # Самая высокая характеристика подсказывает, как изобразить героя.
+    strongest_stat = STAT_NAMES[0]
+    for name in STAT_NAMES:
+        if stats[name] > stats[strongest_stat]:
+            strongest_stat = name
     inventory = stats.get("inventory") or []
 
     return (
-        f"{race} {char_class}, {style_hints[dominant]}, "
+        f"{race} {char_class}, {style_hints[strongest_stat]}, "
         f"{description[:80]}, "
         f"with this equipment: {', '.join(inventory)}, "
         f"fantasy portrait, detailed digital art, dramatic lighting, dark background"
     )
 
 
-async def create_character_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    prompt = build_image_prompt(
+async def create_character_portrait(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    prompt = build_portrait_prompt(
         race=context.user_data["race"],
         char_class=context.user_data["class"],
         description=context.user_data["description"],

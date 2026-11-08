@@ -1,189 +1,155 @@
-from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    Update,
-)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from config.states import GAME, MAINMENU
+from config.states import GAME, MAIN_MENU
 from db.games_crud import (
-    create_game,
-    get_game_by_tg_id,
-    get_save_by_slot,
-    list_saves_for_user,
+    get_checkpoint,
+    get_current_game,
+    list_checkpoints,
+    save_current_game,
 )
 from handlers.build_scene_handler import build_scene_image_prompt
-from handlers.start_handler import remember_character
+from handlers.scene_message import format_scene, send_scene
+from handlers.start_handler import load_character
 from services.ask_gpt import generate_text
-from services.create_system_promts import create_first_play_system_prompt
 from services.generate_image import generate_image
-from services.read_model_json import read_model_json, scene_is_ok
+from services.read_model_json import is_valid_scene, read_model_json
+from services.scene_prompts import build_first_scene_prompt
 
 
-def _build_scene_text(scene_dic: dict) -> str:
-    scene_text = scene_dic["scene"] + "\n"
-    for n, action in enumerate(scene_dic["actions"], start=1):
-        scene_text += f"\n{n}. {action}"
-    return scene_text
-
-
-async def load_saved_game(update: Update, context: ContextTypes.DEFAULT_TYPE, save_slot: str):
+async def restore_scene(update, context, game):
     if not context.user_data.get("stats"):
-        await remember_character(update.effective_user.id, context)
+        await load_character(update.effective_user.id, context)
 
-    save = await get_save_by_slot(update.effective_user.id, save_slot)
-    if not save:
-        if update.callback_query:
-            await update.callback_query.message.reply_text(
-                "Такого сохранения не найдено. Начинаем заново."
-            )
-        return await handle_start_game(update, context)
-
-    context.user_data["history"] = save["history"]
-    context.user_data["last_scene_dic"] = save["last_scene"]
-    context.user_data["scene_count"] = save["scene_count"]
-
-    keyboard = [
-        [InlineKeyboardButton("действие 1", callback_data="action_1")],
-        [InlineKeyboardButton("действие 2", callback_data="action_2")],
-        [InlineKeyboardButton("действие 3", callback_data="action_3")],
-    ]
-    scene_text = _build_scene_text(save["last_scene"])
-
-    if update.callback_query:
-        await update.callback_query.message.reply_photo(
-            photo=save["scene_image"],
-            caption=scene_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
+    history = game["history"]
+    scene = game["last_scene"]
+    if not is_valid_scene(scene, require_three_actions=False):
+        await update.effective_message.reply_text(
+            "Не получилось открыть сохранённую сцену."
         )
+        return MAIN_MENU
+
+    context.user_data["history"] = history
+    context.user_data["last_scene_dic"] = scene
+
+    # Коммит Артёма (52a6b6d): при продолжении берём номер из сохранения.
+    saved_scene_count = game.get("scene_count")
+    if saved_scene_count is not None:
+        context.user_data["scene_count"] = saved_scene_count
     else:
-        await update.effective_message.reply_photo(
-            photo=save["scene_image"],
-            caption=scene_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        # В старых сохранениях счётчика нет. Один ответ ведущего — одна сцена.
+        scene_count = 0
+        for message in history:
+            if message["role"] == "assistant":
+                scene_count += 1
+        context.user_data["scene_count"] = max(1, scene_count)
 
+    await send_scene(
+        update.effective_message,
+        game["scene_image"],
+        format_scene(scene),
+        action_count=min(3, len(scene["actions"])),
+    )
     return GAME
 
 
-async def handle_continue_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if query:
-        await query.answer()
+async def continue_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    game = await get_current_game(update.effective_user.id)
+    if not game:
+        await update.effective_message.reply_text(
+            "Текущей игры нет. Открой меню командой /start."
+        )
+        return MAIN_MENU
+    return await restore_scene(update, context, game)
 
-    saves = await list_saves_for_user(update.effective_user.id)
-    if not saves:
-        if query:
-            await query.message.reply_text("Сохранений не найдено. Начинаем заново.")
-        return await handle_start_game(update, context)
 
-    if len(saves) == 1:
-        return await load_saved_game(update, context, saves[0]["save_slot"])
+async def show_checkpoints(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    checkpoints = await list_checkpoints(update.effective_user.id)
+    if not checkpoints:
+        await update.effective_message.reply_text("Контрольных точек пока нет.")
+        return MAIN_MENU
 
     buttons = []
-    for save in saves:
-        label = f"Сохранение {save['scene_count'] // 10}"
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    label,
-                    callback_data=f"load_save_{save['save_slot'].split('_')[-1]}",
-                )
-            ]
+    for checkpoint in checkpoints:
+        slot_number = checkpoint["save_slot"].removeprefix("slot_")
+        button = InlineKeyboardButton(
+            f"Сцена {checkpoint['scene_count']}",
+            callback_data=f"load_save_{slot_number}",
         )
+        buttons.append([button])
 
-    await query.message.reply_text(
-        "Выбери сохранение:",
+    await update.effective_message.reply_text(
+        "Выбери контрольную точку:",
         reply_markup=InlineKeyboardMarkup(buttons),
     )
-    return MAINMENU
+    return MAIN_MENU
 
 
-async def load_game_save(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def load_checkpoint(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    if query:
-        await query.answer()
+    await query.answer()
 
-    save_number = query.data.replace("load_save_", "")
-    return await load_saved_game(update, context, f"slot_{save_number}")
+    slot_number = query.data.removeprefix("load_save_")
+    game = await get_checkpoint(update.effective_user.id, f"slot_{slot_number}")
+    if not game:
+        await update.effective_message.reply_text("Такой контрольной точки нет.")
+        return MAIN_MENU
+    return await restore_scene(update, context, game)
 
 
-async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if query:
-        await query.answer()
-
+async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+    user_id = update.effective_user.id
     if not context.user_data.get("stats"):
-        await remember_character(update.effective_user.id, context)
+        await load_character(user_id, context)
 
-    if not context.user_data.get("stats"):
-        if query:
-            await query.message.reply_text(
-                "Сначала нужно создать персонажа — нажми «🧙 Создать персонажа»"
-            )
-        return MAINMENU
-    message = await query.message.reply_text("⚔️ Игра начинается...")
-    stats = context.user_data["stats"]
+    character = context.user_data
+    stats = character.get("stats")
+    if not stats:
+        await update.effective_message.reply_text(
+            "Сначала нужно создать персонажа — нажми «🧙 Создать персонажа»"
+        )
+        return MAIN_MENU
 
-    system_prompt = create_first_play_system_prompt(
-        name=context.user_data["name"],
-        race=context.user_data["race"],
-        char_class=context.user_data["class"],
+    status = await update.effective_message.reply_text("⚔️ Игра начинается...")
+    prompt = build_first_scene_prompt(
+        name=character["name"],
+        race=character["race"],
+        char_class=character["class"],
         backstory=stats["backstory"],
         stats=stats,
     )
-    # словарь json "{'scene':'строка', 'actions':['действие 1', 'действие 2', 'действие 3']}"
-    answer_str_json = await generate_text(system_prompt)
-    answer_dic = read_model_json(answer_str_json)
-    answer_dic["needs_roll"] = False
-    if not scene_is_ok(answer_dic):
-        await message.edit_text(
+    scene = read_model_json(await generate_text(prompt))
+    if not is_valid_scene(scene):
+        await status.edit_text(
             "Не получилось разобрать ответ. Нажми «Начать игру» ещё раз."
         )
-        return MAINMENU
-    keyboard = [
-        [InlineKeyboardButton("действие 1", callback_data="action_1")],
-        [InlineKeyboardButton("действие 2", callback_data="action_2")],
-        [InlineKeyboardButton("действие 3", callback_data="action_3")],
+        return MAIN_MENU
+
+    # Первую сцену начинаем без проверки кубиком.
+    scene["needs_roll"] = False
+    scene_text = format_scene(scene)
+    history = [
+        {"role": "system", "content": prompt},
+        {"role": "assistant", "content": scene_text},
     ]
-    scene_text = _build_scene_text(answer_dic)
 
-    await message.edit_text("🖼 Рисую сцену...")
-
-    # генерит английский промпт для генерации картики в шаге игры
+    await status.edit_text("🖼 Рисую сцену...")
     image_prompt = await build_scene_image_prompt(
-        scene=answer_dic["scene"],
-        race=context.user_data["race"],
-        char_class=context.user_data["class"],
+        scene=scene["scene"], race=character["race"], char_class=character["class"]
     )
-    context.user_data["history"] = [
-        {
-            "role": "system",
-            "content": system_prompt,
-        },
-        {
-            "role": "assistant",
-            "content": scene_text,
-        },
-    ]
-    context.user_data["last_scene_dic"] = answer_dic
-    context.user_data["scene_count"] = 1
-
-    scene_image_path = await generate_image(
-        image_prompt,
-        reference_image_path=context.user_data["portrait"],
+    image_path = await generate_image(
+        image_prompt, reference_image_path=character["portrait"]
     )
 
-    await message.delete()
-    await query.message.reply_photo(
-        photo=scene_image_path,
-        caption=scene_text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
-    await create_game(
-        update.effective_user.id,
-        history=context.user_data["history"],
-        last_scene=context.user_data["last_scene_dic"],
-        scene_image=scene_image_path,
-    )
+    # Коммит Артёма (52a6b6d): при старте сохраняем номер первой сцены.
+    await save_current_game(user_id, history, scene, image_path, scene_count=1)
+    character["history"] = history
+    character["last_scene_dic"] = scene
+    character["scene_count"] = 1
+
+    await status.delete()
+    await send_scene(update.effective_message, image_path, scene_text)
     return GAME

@@ -1,174 +1,146 @@
-import json
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Update
 from telegram.ext import ContextTypes
 
-from config.states import GAME, MAINMENU
-from db.charackter_crud import update_character
-from db.games_crud import save_game_snapshot, update_game
+from config.states import GAME, MAIN_MENU
+from config.stats import STAT_NAMES
+from db.character_crud import update_character
+from db.games_crud import SCENES_PER_CHECKPOINT, save_checkpoint, save_current_game
 from handlers.build_scene_handler import build_scene_image_prompt
-from handlers.start_handler import remember_character
-from services.ask_gpt_with_context import generate_text_with_context
-from services.create_system_promts import create_system_prompt
-from services.dice_mechanics import resolve_action_roll
+from handlers.scene_message import format_scene, send_scene
+from handlers.start_handler import load_character
+from services.ask_gpt import generate_text_with_history
+from services.dice_mechanics import roll_d20
 from services.generate_image import generate_image
-from services.read_model_json import read_model_json, scene_is_ok
+from services.read_model_json import is_valid_scene, read_model_json
+from services.scene_prompts import build_next_scene_prompt
+
+SUMMARY_EVERY_SCENES = 5
 
 
-def take_number(data, key):
-    # если модель не прислала число, берём 0 и не падаем
-    value = data.get(key, 0)
-    if type(value) is int:
-        return value
+def read_stat_change(scene, name):
+    # Если модель пропустила число или вернула текст, характеристика не меняется.
+    change = scene.get(name)
+    if type(change) is int:
+        return change
     return 0
 
 
-async def save_fight_progress(telegram_id, context):
-    # статы и жизни пишем в базу, не только в память бота
-    stats = context.user_data.get("stats")
-    if not stats:
-        return
-
-    hp = context.user_data.get("hp")
-    if type(hp) is not int:
-        hp = 0
-        context.user_data["hp"] = 0
-
-    max_hp = context.user_data.get("max_hp")
-    if type(max_hp) is not int:
-        max_hp = hp
-
-    await update_character(
-        telegram_id,
-        stats=json.dumps(stats),
-        hp=hp,
-        max_hp=max_hp,
-    )
-
-
-async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def play_turn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if not context.user_data.get("stats"):
-        await remember_character(update.effective_user.id, context)
+    user_id = update.effective_user.id
+    player = context.user_data
+    if not player.get("stats"):
+        await load_character(user_id, context)
 
-    if not context.user_data.get("stats") or not context.user_data.get("history"):
-        await query.message.reply_text("Сначала создай персонажа и начни игру из меню.")
-        return MAINMENU
-
-    stats = context.user_data["stats"]
-    # обновляем системный промпт в истории, чтобы он соответствовал текущему персонажу
-
-    context.user_data["history"][0]["content"] = create_system_prompt(
-        name=context.user_data["name"],
-        race=context.user_data["race"],
-        char_class=context.user_data["class"],
-        backstory=stats["backstory"],
-        stats=context.user_data["stats"],
-    )
-
-    action = query.data  # "action_1", "action_2", "action_3"
-    action_number = int(action[-1])
-    last_scene_dic = context.user_data["last_scene_dic"]
-    action_text = last_scene_dic["actions"][action_number - 1]
-
-    needs_roll = last_scene_dic.get("needs_roll")
-    if needs_roll:
-        # вызов функции из dice mechanic
-        dice_result = resolve_action_roll(
-            ability=last_scene_dic.get("ability"),
-            dc=int(last_scene_dic.get("dc", 12)),
+    stats = player.get("stats")
+    history = player.get("history")
+    last_scene = player.get("last_scene_dic")
+    if (
+        not stats
+        or not history
+        or not is_valid_scene(last_scene, require_three_actions=False)
+    ):
+        await query.message.reply_text(
+            "Открой меню командой /start и начни или продолжи игру."
         )
+        return MAIN_MENU
 
-        if dice_result["success"]:
-            outcome_text = "✅ Успех"
+    # Номер кнопки показывает, какую строку выбрать из списка действий.
+    action_number = int(query.data[-1])
+    if action_number > len(last_scene["actions"]):
+        await query.message.reply_text("Такого действия в этой сцене нет.")
+        return GAME
+    action = last_scene["actions"][action_number - 1]
+    story_input = f"Игрок выбрал действие: {action}. "
+    dice_text = "🎲 Проверка не нужна"
+
+    # Коммиты Егора (0685126, e7e952a): бросок d20 сравниваем со сложностью сцены.
+    difficulty = last_scene.get("dc")
+    if last_scene.get("needs_roll") is True and type(difficulty) is int:
+        roll = roll_d20()
+        if roll >= difficulty:
+            result = "✅ Успех"
         else:
-            outcome_text = "❌ Провал"
+            result = "❌ Провал"
+        dice_text = f"🎲 Проверка вашей удачи {roll} против DC {difficulty} — {result}"
+        story_input += f"Результат броска: {dice_text}."
 
-        dice_text = (
-            "🎲 Проверка вашей удачи "
-            f"{dice_result['total']} против DC {dice_result['dc']} — {outcome_text}"
+    # Коммит Артёма (52a6b6d): номер сцены определяет, когда сокращать историю.
+    scene_count = player.get("scene_count", 0) + 1
+    needs_summary = scene_count % SUMMARY_EVERY_SCENES == 0
+
+    # Готовим копию истории. Если модель ошибётся, сохранённый ход не изменится.
+    prompt = build_next_scene_prompt(
+        name=player["name"],
+        race=player["race"],
+        char_class=player["class"],
+        backstory=stats["backstory"],
+        stats=stats,
+    )
+    new_history = history.copy()
+    new_history[0] = {"role": "system", "content": prompt}
+    # Просим сводку в обычном ответе модели, вместе с новой сценой.
+    if needs_summary:
+        new_history[0]["content"] += (
+            '\nДля этого хода добавь в JSON одно дополнительное поле "summary". '
+            "Сократи историю, оставляя все ключевые моменты, "
+            "которые пригодятся для продолжения игры. Пиши по-русски. "
+            "Сохрани важные факты, персонажей, предметы и незавершённые задачи. "
+            "Новую сцену опиши отдельно в поле scene."
         )
-        story_input = (
-            f"Игрок выбрал действие: {action_text}. "
-            f"Результат броска: {dice_text}."
-        )
-    else:
-        dice_text = "🎲 Проверка не нужна"
-        story_input = (
-            f"Игрок выбрал действие: {action_text}. "
-        )
+    new_history.append({"role": "user", "content": story_input})
 
-    context.user_data["history"].append({"role": "user", "content": story_input})
-
-    message = await query.message.reply_text(f"{dice_text}\n\n⚔️ Сцена развивается...")
-
-    answer_str_json = await generate_text_with_context(context.user_data["history"])
-
-    answer_dic = read_model_json(answer_str_json)
-    if not scene_is_ok(answer_dic):
-        context.user_data["history"].pop()
-        await message.edit_text(
-            "Не получилось разобрать ответ. Нажми действие ещё раз."
-        )
+    status = await query.message.reply_text(f"{dice_text}\n\n⚔️ Сцена развивается...")
+    scene = read_model_json(await generate_text_with_history(new_history))
+    if not is_valid_scene(scene):
+        await status.edit_text("Не получилось разобрать ответ. Нажми действие ещё раз.")
         return GAME
 
-
-    keyboard = [
-        [InlineKeyboardButton("действие 1", callback_data="action_1")],
-        [InlineKeyboardButton("действие 2", callback_data="action_2")],
-        [InlineKeyboardButton("действие 3", callback_data="action_3")],
-    ]
-    scene_text = answer_dic["scene"] + "\n"
-    for n, action in enumerate(answer_dic["actions"], start=1):
-        scene_text += "\n" + str(n) + ". " + action
-    context.user_data["stats"]["STR"] += take_number(answer_dic, "str")
-    context.user_data["stats"]["AGI"] += take_number(answer_dic, "agi")
-    context.user_data["stats"]["INT"] += take_number(answer_dic, "int")
-    context.user_data["stats"]["CON"] += take_number(answer_dic, "con")
-    context.user_data["stats"]["CHA"] += take_number(answer_dic, "cha")
-    context.user_data["stats"]["LUCK"] += take_number(answer_dic, "luck")
-    if type(context.user_data.get("hp")) is not int:
-        context.user_data["hp"] = 0
-    context.user_data["hp"] += take_number(answer_dic, "hp")
-    await save_fight_progress(update.effective_user.id, context)
-    await message.edit_text("🖼 Рисую сцену...")
-
-    # генерит английский промпт для генерации картики в шаге игры
+    # Рисуем сцену, затем записываем результат хода в базу.
+    await status.edit_text("🖼 Рисую сцену...")
     image_prompt = await build_scene_image_prompt(
-        scene=answer_dic["scene"],
-        race=context.user_data["race"],
-        char_class=context.user_data["class"],
+        scene=scene["scene"], race=player["race"], char_class=player["class"]
+    )
+    image_path = await generate_image(
+        image_prompt, reference_image_path=player["portrait"]
     )
 
-    context.user_data["history"].append({"role": "assistant", "content": scene_text})
+    new_stats = stats.copy()
+    for name in STAT_NAMES:
+        new_stats[name] += read_stat_change(scene, name.lower())
+    hp = read_stat_change(player, "hp") + read_stat_change(scene, "hp")
+    max_hp = player.get("max_hp")
+    if type(max_hp) is not int:
+        max_hp = hp
 
-    context.user_data["last_scene_dic"] = answer_dic
-    context.user_data["scene_count"] = context.user_data.get("scene_count", 0) + 1
+    scene_text = format_scene(scene)
+    new_history.append({"role": "assistant", "content": scene_text})
+    # Автосохранение и контрольная точка должны получить одну историю.
+    if needs_summary:
+        new_history[0]["content"] = prompt
+        summary = scene.pop("summary", None)
+        if isinstance(summary, str) and summary.strip():
+            new_history = new_history[:2] + [new_history[-1]]
+            new_history[1] = {
+                "role": "assistant",
+                "content": f"Краткая история приключения:\n{summary.strip()}",
+            }
 
-    scene_image_path = await generate_image(
-        image_prompt,
-        reference_image_path=context.user_data["portrait"],
-    )
-    await update_game(
-        telegram_id=update.effective_user.id,
-        last_scene=answer_dic,
-        scene_image=scene_image_path,
-        history=context.user_data["history"],
-    )
-    if context.user_data["scene_count"] % 10 == 0:
-        await save_game_snapshot(
-            telegram_id=update.effective_user.id,
-            history=context.user_data["history"],
-            last_scene=answer_dic,
-            scene_image=scene_image_path,
-            scene_count=context.user_data["scene_count"],
-        )
-    await message.delete()
-    await query.message.reply_photo(
-        photo=scene_image_path,
-        caption=f"{scene_text}\n\n{dice_text}",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    await update_character(user_id, stats=new_stats, hp=hp, max_hp=max_hp)
+    await save_current_game(user_id, new_history, scene, image_path, scene_count)
+
+    # Коммиты Егора (e029782): каждые 10 сцен записываем отдельную точку.
+    if scene_count % SCENES_PER_CHECKPOINT == 0:
+        await save_checkpoint(user_id, new_history, scene, image_path, scene_count)
+
+    player["stats"] = new_stats
+    player["hp"] = hp
+    player["history"] = new_history
+    player["last_scene_dic"] = scene
+    player["scene_count"] = scene_count
+
+    await status.delete()
+    await send_scene(query.message, image_path, f"{scene_text}\n\n{dice_text}")
     return GAME

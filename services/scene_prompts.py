@@ -1,4 +1,5 @@
-def create_first_play_system_prompt(
+# В первой сцене модели нужно придумать место и три действия.
+def build_first_scene_prompt(
     name: str, race: str, char_class: str, backstory: str, stats: dict
 ) -> str:
     system_prompt = f"""
@@ -32,7 +33,8 @@ def create_first_play_system_prompt(
     return system_prompt
 
 
-def create_system_prompt(
+# Коммиты Егора (e7e952a): описание риска, сложности и формата действий для модели.
+def build_next_scene_prompt(
     name: str, race: str, char_class: str, backstory: str, stats: dict
 ) -> str:
     system_prompt = f"""
@@ -74,7 +76,7 @@ def create_system_prompt(
 
         Пример (этот пример должен быть единственным содержимым ответа):
         {{"scene": "Вход в заброшенную часовню освещён слабым светом луны.", "actions": ["войти внутрь", "осмотреть алтари", "проверить окна"], "str": 1, "agi": 0, "int": 5, "con": 6, "cha": 10, "luck": 7, "hp": 35, "inventory": ["меч", "щит", "зелье"],"needs_roll": true, "ability": "INT", "dc": 15, "reason": "Действие опасное и требует проверки интеллекта."}}
-        
+
         Учитывай историю игры (предыдущие assistant/user-сообщения) при генерации сцены и действий. Пиши атмосферно, в стиле тёмного фэнтези.
         Не заканчивай игру, сюжет бесконечный. Отвечай на русском языке.
         """

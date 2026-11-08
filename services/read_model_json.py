@@ -2,29 +2,37 @@ import json
 
 
 def read_model_json(text):
-    # модель иногда пишет ```json или текст вокруг ответа, нам нужен сам словарь
-    if not text:
+    # Модель иногда дописывает пояснения вокруг JSON. Берём текст внутри скобок.
+    if not isinstance(text, str):
         return None
 
     start = text.find("{")
     end = text.rfind("}")
-    if start == -1 or end == -1 or end < start:
+    if start == -1 or end < start:
         return None
 
     try:
-        data = json.loads(text[start : end + 1])
+        return json.loads(text[start : end + 1])
     except json.JSONDecodeError:
         return None
 
-    if type(data) is not dict:
-        return None
-    return data
 
+def is_valid_scene(scene, require_three_actions=True):
+    # Для новой сцены ждём три действия. В старых сохранениях их могло быть меньше.
+    if not isinstance(scene, dict):
+        return False
 
-def scene_is_ok(data):
-    if not data or not data.get("scene"):
+    description = scene.get("scene")
+    if not isinstance(description, str) or not description:
         return False
-    actions = data.get("actions")
-    if type(actions) is not list or len(actions) == 0:
+
+    actions = scene.get("actions")
+    if not isinstance(actions, list) or not actions:
         return False
+    if require_three_actions and len(actions) != 3:
+        return False
+
+    for action in actions:
+        if not isinstance(action, str):
+            return False
     return True

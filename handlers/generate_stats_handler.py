@@ -1,22 +1,18 @@
-from telegram.ext import ContextTypes
-
+from config.stats import STAT_NAMES
 from services.ask_gpt import generate_text
 from services.read_model_json import read_model_json
 
 
-async def send_stats_error(context, chat_id):
-    await context.bot.send_message(chat_id=chat_id, text="Ошибка")
-
-
-async def generate_stats(context: ContextTypes.DEFAULT_TYPE, chat_id):
+async def generate_character_stats(character):
+    # Модель придумывает характеристики, предысторию и стартовые вещи.
     answer = await generate_text(
         f"""Ты — система RPG. Определи начальные характеристики персонажа.
-    
+
                 Персонаж:
-                - Имя: {context.user_data["name"]}
-                - Раса: {context.user_data["race"]}
-                - Класс: {context.user_data["class"]}
-                - Описание: {context.user_data["description"]}
+                - Имя: {character["name"]}
+                - Раса: {character["race"]}
+                - Класс: {character["class"]}
+                - Описание: {character["description"]}
 
                 Правила:
                 - Каждая характеристика — целое число от 1 до 20
@@ -44,40 +40,24 @@ async def generate_stats(context: ContextTypes.DEFAULT_TYPE, chat_id):
     )
     stats = read_model_json(answer)
     if not stats:
-        await send_stats_error(context, chat_id)
         return None
 
-    required_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK", "backstory"]
-    for key in required_keys:
-        if key not in stats:
-            await send_stats_error(context, chat_id)
+    # Проверяем типы до сложения, чтобы модель не передала текст вместо числа.
+    total = 0
+    for name in STAT_NAMES:
+        value = stats.get(name)
+        if type(value) is not int:
             return None
+        total += value
 
-    if (
-        type(stats["STR"]) is not int
-        or type(stats["AGI"]) is not int
-        or type(stats["INT"]) is not int
-        or type(stats["CON"]) is not int
-        or type(stats["CHA"]) is not int
-        or type(stats["LUCK"]) is not int
+    if total != 72 or not isinstance(stats.get("backstory"), str):
+        return None
+
+    # Портрет можно нарисовать и без инвентаря.
+    inventory = stats.get("inventory")
+    if not isinstance(inventory, list) or any(
+        not isinstance(item, str) for item in inventory
     ):
-        await send_stats_error(context, chat_id)
-        return None
-
-    stat_keys = ["STR", "AGI", "INT", "CON", "CHA", "LUCK"]
-
-    total = sum(stats[key] for key in stat_keys)
-
-    if total != 72:
-        await send_stats_error(context, chat_id)
-        return None
-
-    if type(stats["backstory"]) is not str:
-        await send_stats_error(context, chat_id)
-        return None
-
-    # без инвентаря портрет падает, пустой список тоже нормально
-    if type(stats.get("inventory")) is not list:
         stats["inventory"] = []
 
     return stats

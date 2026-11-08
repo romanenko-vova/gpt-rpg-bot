@@ -1,77 +1,77 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from config.states import MAINMENU
-from db.charackter_crud import get_character_by_tg_id
-from db.games_crud import get_game_by_tg_id, list_saves_for_user
-from db.users_crud import create_user, get_user_by_tg_id
+from config.states import MAIN_MENU
+from db.character_crud import get_character
+from db.games_crud import get_current_game, list_checkpoints
+from db.users_crud import register_user
 
 
-async def remember_character(telegram_id, context):
-    # после перезапуска память пустая, персонажа берём из базы
-    character = await get_character_by_tg_id(telegram_id)
-    if not character or not character.get("stats"):
-        return False
+async def load_character(telegram_id, context):
+    # После перезапуска берём персонажа из базы, если его ещё нет в памяти.
+    character = await get_character(telegram_id)
+    if not character or not character["stats"]:
+        return
 
-    context.user_data["name"] = character.get("name")
-    context.user_data["race"] = character.get("race")
-    context.user_data["class"] = character.get("class_name")
-    context.user_data["description"] = character.get("description")
-    context.user_data["stats"] = character.get("stats")
-    context.user_data["portrait"] = character.get("portrait")
-    context.user_data["hp"] = character.get("hp")
-    context.user_data["max_hp"] = character.get("max_hp")
-    return True
+    context.user_data["name"] = character["name"]
+    context.user_data["race"] = character["race"]
+    context.user_data["class"] = character["class_name"]
+    context.user_data["description"] = character["description"]
+    context.user_data["stats"] = character["stats"]
+    context.user_data["portrait"] = character["portrait"]
+    context.user_data["hp"] = character["hp"]
+    context.user_data["max_hp"] = character["max_hp"]
 
 
-async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # подтверждение персонажа тоже попадает сюда, флаг ожидания кнопки сбрасываем
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Подтверждение карточки тоже открывает главное меню.
     context.user_data["waiting_confirm"] = False
 
-    user = await get_user_by_tg_id(update.effective_user.id)
-    if not user:
-        user = await create_user(
-            update.effective_user.id, update.effective_user.first_name
-        )
+    user = update.effective_user
+    await register_user(user.id, user.first_name)
 
     query = update.callback_query
     if query:
         await query.answer()
         await query.delete_message()
 
-    saved_game = await list_saves_for_user(update.effective_user.id)
-
     if not context.user_data.get("stats"):
-        await remember_character(update.effective_user.id, context)
+        await load_character(user.id, context)
 
-    keyboard = []
-    if not context.user_data.get("portrait"):
-        keyboard += [
+    # Текущая игра и старые контрольные точки открываются разными кнопками.
+    current_game = await get_current_game(user.id)
+    checkpoints = await list_checkpoints(user.id)
+
+    if context.user_data.get("portrait"):
+        character_button = InlineKeyboardButton(
+            "👤 Мой персонаж", callback_data="check_character"
+        )
+    else:
+        character_button = InlineKeyboardButton(
+            "🧙 Создать персонажа", callback_data="create_character"
+        )
+
+    if current_game:
+        game_button = InlineKeyboardButton(
+            "🎲 Продолжить игру", callback_data="continue_game"
+        )
+    else:
+        game_button = InlineKeyboardButton("🎲 Начать игру", callback_data="start_game")
+
+    buttons = [[character_button], [game_button]]
+    if checkpoints:
+        buttons.append(
             [
                 InlineKeyboardButton(
-                    "🧙 Создать персонажа", callback_data="create_character"
+                    "💾 Контрольные точки", callback_data="show_checkpoints"
                 )
-            ],
-        ]
-    else:
-        keyboard += [
-            [InlineKeyboardButton("👤 Мой персонаж", callback_data="check_character")],
-        ]
-    if saved_game:
-        keyboard += [
-            [InlineKeyboardButton("🎲 Продолжить игру", callback_data="continue_game")],
-        ]
-    else:
-        keyboard += [
-            [InlineKeyboardButton("🎲 Начать игру", callback_data="start_game")],
-        ]
-    keyboard += [
-        [InlineKeyboardButton("❓ Помощь", callback_data="help")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+            ]
+        )
+    buttons.append([InlineKeyboardButton("❓ Помощь", callback_data="help")])
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"Привет, {update.effective_user.first_name}! Добро пожаловать в игру!",
-        reply_markup=reply_markup,
+        text=f"Привет, {user.first_name}! Добро пожаловать в игру!",
+        reply_markup=InlineKeyboardMarkup(buttons),
     )
-    return MAINMENU
+    return MAIN_MENU

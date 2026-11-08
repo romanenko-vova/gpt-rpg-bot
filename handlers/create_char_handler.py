@@ -1,4 +1,3 @@
-import json
 from html import escape
 
 from telegram import (
@@ -12,22 +11,21 @@ from telegram import (
 from telegram.ext import ContextTypes
 
 from config.states import (
-    CREATECHAR,
-    CREATEDESC,
+    CREATE_CHARACTER,
     GET_CLASS,
+    GET_DESCRIPTION,
     GET_NAME,
-    GET_RASSA,
+    GET_RACE,
 )
-from db.charackter_crud import (
-    create_character,
-    get_character_by_tg_id,
-    update_character,
-)
-from handlers.create_char_image_handler import create_character_image
-from handlers.generate_stats_handler import generate_stats
+from db.character_crud import create_character, update_character
+from handlers.create_char_image_handler import create_character_portrait
+from handlers.generate_stats_handler import generate_character_stats
+
+RACES = ["🧑🏼 Человек", "🧝‍♂️ Эльф", "🧙‍♂️ гном", "👹 орк", "🧛‍♂️ вампир"]
+CLASSES = ["⚔️ Воин", "🏹 Охотник", "🔮 Маг", "🗡 Вор"]
 
 
-async def create_char_handler_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_character_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["waiting_confirm"] = False
 
     query = update.callback_query
@@ -45,14 +43,13 @@ async def create_char_handler_start(update: Update, context: ContextTypes.DEFAUL
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Привет,создай своего персонажа!",
+        text="Привет! Создай своего персонажа.",
         reply_markup=reply_markup,
     )
-    return CREATECHAR
+    return CREATE_CHARACTER
 
 
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     context.user_data["waiting_confirm"] = False
 
     query = update.callback_query
@@ -62,124 +59,77 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id, text="Дай имя своему персонажу"
     )
-    if not await get_character_by_tg_id(update.effective_user.id):
-        await create_character(update.effective_user.id)
+    await create_character(update.effective_user.id)
     return GET_NAME
 
 
-async def get_name_and_ask_rassa(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(1)
-    query = update.callback_query
-    if query:
-        await query.answer()
+async def save_name_and_ask_race(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.effective_message.text
+    context.user_data["name"] = name
+    await update_character(update.effective_user.id, name=name)
 
-    user_name = update.effective_message.text
-    context.user_data["name"] = user_name
-    # create user in database
-
-    await update_character(update.effective_user.id, name=user_name)
-
-    keyboard = [
-        [KeyboardButton("🧑🏼 Человек")],
-        [KeyboardButton("🧝‍♂️ Эльф")],
-        [KeyboardButton("🧙‍♂️ гном")],
-        [KeyboardButton("👹 орк")],
-        [KeyboardButton("🧛‍♂️ вампир")],
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard)
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Выбери расу персонажа в клавиатуре справа снизу",
-        reply_markup=reply_markup,
+    # Из списка рас делаем кнопки, по одной в каждой строке.
+    keyboard = [[KeyboardButton(race)] for race in RACES]
+    await update.effective_message.reply_text(
+        "Выбери расу персонажа на клавиатуре.",
+        reply_markup=ReplyKeyboardMarkup(keyboard),
     )
+    return GET_RACE
 
-    return GET_RASSA
 
-
-async def get_rassa_and_ask_class(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    query = update.callback_query
-    if query:
-        await query.answer()
-
-    user_rassa = update.effective_message.text
-    context.user_data["race"] = user_rassa
-    await update_character(update.effective_user.id, race=user_rassa)
-    if user_rassa in [
-        "🧑🏼 Человек",
-        "🧝‍♂️ Эльф",
-        "🧙‍♂️ гном",
-        "👹 орк",
-        "🧛‍♂️ вампир",
-    ]:
-        keyboard = [
-            [KeyboardButton("⚔️ Воин")],
-            [KeyboardButton("🏹 Охотник")],
-            [KeyboardButton("🔮 Маг")],
-            [KeyboardButton("🗡 Вор")],
-        ]
-        reply_markup = ReplyKeyboardMarkup(keyboard)
-
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Выбери класс персонажа в клавиатуре справа снизу",
-            reply_markup=reply_markup,
+async def save_race_and_ask_class(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    race = update.effective_message.text
+    if race not in RACES:
+        await update.effective_message.reply_text(
+            f"За расу {race} играть нельзя. Выбери одну из рас на клавиатуре."
         )
-    else:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"в нашей игре нельзя играть за расу {update.effective_message.text}, выбери другую расу персонажа в клавиатуре снизу",
-        )
-        return GET_RASSA
+        return GET_RACE
 
+    context.user_data["race"] = race
+    await update_character(update.effective_user.id, race=race)
+
+    keyboard = [[KeyboardButton(class_name)] for class_name in CLASSES]
+    await update.effective_message.reply_text(
+        "Выбери класс персонажа на клавиатуре.",
+        reply_markup=ReplyKeyboardMarkup(keyboard),
+    )
     return GET_CLASS
 
 
-async def get_class_and_ask_description(
+async def save_class_and_ask_description(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    class_name = update.effective_message.text
+    if class_name not in CLASSES:
+        await update.effective_message.reply_text(
+            f"Класса {class_name} нет в игре. Выбери класс на клавиатуре."
+        )
+        return GET_CLASS
+
+    context.user_data["class"] = class_name
+    await update_character(update.effective_user.id, class_name=class_name)
+
+    await update.effective_message.reply_text(
+        "Опиши своего персонажа!", reply_markup=ReplyKeyboardRemove()
+    )
+    return GET_DESCRIPTION
+
+
+async def save_description_and_create_character(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
 
-    query = update.callback_query
-    if query:
-        await query.answer()
-
-    user_class = update.effective_message.text
-
-    context.user_data["class"] = user_class
-    await update_character(update.effective_user.id, class_name=user_class)
-    if user_class in ["⚔️ Воин", "🏹 Охотник", "🔮 Маг", "🗡 Вор"]:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Опиши своего персонажа!",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-    else:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"в нашей игре нельзя играть за класс {update.effective_message.text}, выбери другой класс персонажа в клавиатуре снизу",
-        )
-        return GET_CLASS
-    return CREATEDESC
-
-
-async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    query = update.callback_query
-    if query:
-        await query.answer()
-
-    # карточка уже готова, ждём кнопку, а не новый текст
+    # Когда карточка готова, ждём подтверждение или отмену.
     if context.user_data.get("waiting_confirm"):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="Нажми «Подтвердить» или «Отменить».",
         )
-        return CREATEDESC
+        return GET_DESCRIPTION
 
-    opis_user = update.effective_message.text
-    context.user_data["description"] = opis_user
-    await update_character(update.effective_user.id, description=opis_user)
+    description = update.effective_message.text
+    context.user_data["description"] = description
+    await update_character(update.effective_user.id, description=description)
     keyboard = [
         [
             InlineKeyboardButton("✅ Подтвердить", callback_data="confirm_character"),
@@ -191,22 +141,23 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text="⚙️ Система определяет характеристики...",
     )
 
-    stats = await generate_stats(context, update.effective_chat.id)
+    stats = await generate_character_stats(context.user_data)
     if not stats:
-        return CREATEDESC
+        await update.effective_message.reply_text(
+            "Не получилось получить характеристики. Отправь описание ещё раз."
+        )
+        return GET_DESCRIPTION
 
+    # Начальное здоровье зависит от телосложения.
     hp = stats["CON"] * 5
-    print(stats)
 
     context.user_data["stats"] = stats
     context.user_data["hp"] = hp
     context.user_data["max_hp"] = hp
 
-    await update_character(update.effective_user.id, stats=json.dumps(stats))
-    await update_character(update.effective_user.id, hp=hp)
-    await update_character(update.effective_user.id, max_hp=hp)
+    await update_character(update.effective_user.id, stats=stats, hp=hp, max_hp=hp)
 
-    # имя/раса/класс/предыстория могут содержать спецсимволы — экранируем под HTML
+    # Заменяем специальные символы, чтобы Telegram правильно показал карточку.
     name = escape(str(context.user_data["name"]))
     race = escape(str(context.user_data["race"]))
     char_class = escape(str(context.user_data["class"]))
@@ -231,23 +182,23 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"📖 <b>Предыстория</b>\n{backstory}"
     )
 
-    message1 = await context.bot.send_message(
+    card_message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=text,
         parse_mode="HTML",
     )
-    message2 = await context.bot.send_message(
+    drawing_status = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="🎨 Рисую портрет...",
     )
-    await create_character_image(update, context)
-    await message2.delete()
-    await message1.reply_photo(
-        photo=context.user_data["portrait"],
+    portrait = await create_character_portrait(update, context)
+    await drawing_status.delete()
+    await card_message.reply_photo(
+        photo=portrait,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
     context.user_data["waiting_confirm"] = True
-    return CREATEDESC
+    return GET_DESCRIPTION
 
 
 async def cancel_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -272,4 +223,4 @@ async def cancel_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text="Создание персонажа отменено.",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    return CREATECHAR
+    return CREATE_CHARACTER
