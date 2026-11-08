@@ -78,8 +78,6 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # вызов функции из dice mechanic
         dice_result = resolve_action_roll(
             action_text=action_text,
-            stats=context.user_data["stats"],
-            char_class=context.user_data["class"],
             ability=last_scene_dic.get("ability"),
             dc=int(last_scene_dic.get("dc", 12)),
         )
@@ -90,19 +88,17 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
             outcome_text = "❌ Провал"
 
         dice_text = (
-            f"🎲 Проверка {dice_result['ability']}: d20({dice_result['roll']}) "
-            f"+ {dice_result['modifier']} = {dice_result['total']} против DC {dice_result['dc']} — {outcome_text}"
+            "🎲 Проверка вашей удачи "
+            f"{dice_result['total']} против DC {dice_result['dc']} — {outcome_text}"
         )
         story_input = (
             f"Игрок выбрал действие: {action_text}. "
-            f"Решение ведущего: {last_scene_dic.get('reason', 'Нужна проверка навыка.')}. "
             f"Результат броска: {dice_text}."
         )
     else:
-        dice_text = "🎲 Проверка не нужна: действие проходит без риска и без броска."
+        dice_text = "🎲 Проверка не нужна"
         story_input = (
             f"Игрок выбрал действие: {action_text}. "
-            f"Решение ведущего: {last_scene_dic.get('reason', 'Действие обычное.')}"
         )
 
     context.user_data["history"].append({"role": "user", "content": story_input})
@@ -110,8 +106,6 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
     message = await query.message.reply_text(f"{dice_text}\n\n⚔️ Сцена развивается...")
 
     answer_str_json = await generate_text_with_context(context.user_data["history"])
-
-    print(answer_str_json)
 
     answer_dic = read_model_json(answer_str_json)
     if not scene_is_ok(answer_dic):
