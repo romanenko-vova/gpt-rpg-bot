@@ -185,11 +185,31 @@ async def handle_action_game(update: Update, context: ContextTypes.DEFAULT_TYPE)
         last_scene=answer_dic,
         scene_image=scene_image_path,
         history=context.user_data["history"],
+        scene_number=context.user_data.get("scene_number", 1) + 1,
     )
+
+    context.user_data["scene_number"] = context.user_data["scene_number"] + 1
     await message.delete()
     await query.message.reply_photo(
         photo=scene_image_path,
         caption=f"{scene_text}\n\n{dice_text}",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    if context.user_data.get("scene_number") % 5 == 0:
+        summary_data = context.user_data["history"]
+        summary_data.append(
+            {
+                "role": "system",
+                "content": "Сократи историю, оставляя все ключевые моменты, которые пригодятся для продолжения игры.",
+            }
+        )
+        context.user_data["history"] = context.user_data["history"][0:2] + context.user_data["history"][-1] 
+        context.user_data["history"][1]["content"] = await generate_text_with_context(summary_data)
+        context.user_data["history"][0]["content"] = create_system_prompt(
+                name=context.user_data["name"],
+                race=context.user_data["race"],
+                char_class=context.user_data["class"],
+                backstory=stats["backstory"],
+                stats=context.user_data["stats"],
+            )
     return GAME

@@ -44,6 +44,7 @@ async def handle_continue_game(update: Update, context: ContextTypes.DEFAULT_TYP
 
     context.user_data["history"] = game["history"]
     context.user_data["last_scene_dic"] = game["last_scene"]
+    context.user_data["scene_number"] = game["scene_number"]
 
     keyboard = [
         [InlineKeyboardButton("действие 1", callback_data="action_1")],
@@ -144,5 +145,7 @@ async def handle_start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         history=context.user_data["history"],
         last_scene=context.user_data["last_scene_dic"],
         scene_image=scene_image_path,
+        scene_number=1,
     )
+    context.user_data["scene_number"] = 1
     return GAME

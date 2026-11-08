@@ -27,6 +27,8 @@ async def create_database(app):
             telegram_id BIGINT UNIQUE,
             history TEXT,
             last_scene TEXT,
-            scene_image TEXT)""")
+            scene_image TEXT,
+            scene_number INTEGER DEFAULT 1 
+        )""")
 
         await db.commit()
